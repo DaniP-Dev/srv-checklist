@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BaseInspectionPayload } from "@/lib/types/inspection";
+import { IDENTIFICACION } from "@/lib/identificacion";
 import {
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
@@ -51,13 +52,20 @@ const itemsShape = Object.fromEntries(
 
 export const checklistCampoSchema = z
   .object({
-    codigo: z.string().min(1, "Código requerido"),
+    codigo: z.string().min(1, IDENTIFICACION.codigo.requiredMessage),
     fecha: z.string().min(1, "Fecha requerida"),
     inspector: z.string().min(1, "Inspector requerido"),
-    razon_social: z.string().min(1, "Razón social requerida"),
-    nit: z.string().min(1, "NIT requerido"),
-    nombre_eds: z.string().min(1, "Nombre de la EDS requerido"),
-    ubicacion: z.string().min(1, "Ubicación requerida"),
+    razon_social: z
+      .string()
+      .min(1, IDENTIFICACION.razon_social.requiredMessage),
+    nit: z.string().min(1, IDENTIFICACION.nit.requiredMessage),
+    codigo_sicom: z
+      .string()
+      .min(1, IDENTIFICACION.codigo_sicom.requiredMessage),
+    establecimiento: z
+      .string()
+      .min(1, IDENTIFICACION.establecimiento.requiredMessage),
+    direccion: z.string().min(1, IDENTIFICACION.direccion.requiredMessage),
     condiciones_generales: z.object(condicionesShape),
     items: z.object(itemsShape),
     hallazgos: z.string(),
@@ -65,7 +73,6 @@ export const checklistCampoSchema = z
       message: "Seleccione el resultado de Etapa dos",
     }),
     observaciones_tecnicas: z.string(),
-    firma_inspector: z.string().min(1, "Firma del inspector requerida"),
   })
   .superRefine((data, ctx) => {
     for (const catalogItem of CAMPO_INSPECTION_ITEMS) {
@@ -130,14 +137,14 @@ export function createChecklistCampoDefaults(): ChecklistCampoFormValues {
     inspector: "",
     razon_social: "",
     nit: "",
-    nombre_eds: "",
-    ubicacion: "",
+    codigo_sicom: "",
+    establecimiento: "",
+    direccion: "",
     condiciones_generales,
     items,
     hallazgos: "",
     etapa_dos: "CUMPLE",
     observaciones_tecnicas: "",
-    firma_inspector: "",
   };
 }
 

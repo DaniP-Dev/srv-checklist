@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { BaseInspectionPayload } from "@/lib/types/inspection";
+import { IDENTIFICACION } from "@/lib/identificacion";
 import { CONDICIONES_SITIO } from "@/features/acta-tecnica/constants";
 
 const personaSchema = z.object({
@@ -33,12 +34,18 @@ const encuestaClaridadSchema = z.union([
 
 export const actaTecnicaSchema = z
   .object({
-    numero_inspeccion: z.string().min(1, "Número de inspección requerido"),
-    razon_social: z.string().min(1, "Razón social requerida"),
-    nit: z.string().min(1, "NIT requerido"),
-    codigo_sicom: z.string().min(1, "Código SICOM requerido"),
-    establecimiento: z.string().min(1, "Establecimiento requerido"),
-    direccion: z.string().min(1, "Dirección requerida"),
+    codigo: z.string().min(1, IDENTIFICACION.codigo.requiredMessage),
+    razon_social: z
+      .string()
+      .min(1, IDENTIFICACION.razon_social.requiredMessage),
+    nit: z.string().min(1, IDENTIFICACION.nit.requiredMessage),
+    codigo_sicom: z
+      .string()
+      .min(1, IDENTIFICACION.codigo_sicom.requiredMessage),
+    establecimiento: z
+      .string()
+      .min(1, IDENTIFICACION.establecimiento.requiredMessage),
+    direccion: z.string().min(1, IDENTIFICACION.direccion.requiredMessage),
     tipo_inspeccion: z.enum(["EDS", "Hermeticidad"], {
       message: "Seleccione el tipo de inspección",
     }),
@@ -61,9 +68,6 @@ export const actaTecnicaSchema = z
     resultado: z.enum(["conforme", "no_conforme"], {
       message: "Seleccione el resultado",
     }),
-    firma_inspector_nombre: z.string().min(1, "Nombre del inspector requerido"),
-    firma_inspector_fecha: z.string().min(1, "Fecha de firma requerida"),
-    firma_inspector: z.string().min(1, "Firma del inspector requerida"),
     firma_cliente_nombre: z.string().min(1, "Nombre del cliente requerido"),
     firma_cliente_cargo: z.string().min(1, "Cargo del cliente requerido"),
     firma_cliente_fecha: z.string().min(1, "Fecha de firma requerida"),
@@ -102,7 +106,7 @@ export function createActaTecnicaDefaults(): ActaTecnicaFormValues {
   ) as ActaTecnicaFormValues["condiciones"];
 
   return {
-    numero_inspeccion: "",
+    codigo: "",
     razon_social: "",
     nit: "",
     codigo_sicom: "",
@@ -131,9 +135,6 @@ export function createActaTecnicaDefaults(): ActaTecnicaFormValues {
     medidas_preventivas: "",
     observaciones_adicionales: "",
     resultado: "conforme",
-    firma_inspector_nombre: "",
-    firma_inspector_fecha: today,
-    firma_inspector: "",
     firma_cliente_nombre: "",
     firma_cliente_cargo: "",
     firma_cliente_fecha: today,
@@ -150,7 +151,7 @@ export function toActaTecnicaPayload(
   values: ActaTecnicaFormValues,
 ): BaseInspectionPayload<ActaTecnicaData> {
   return {
-    id_inspeccion: values.numero_inspeccion,
+    id_inspeccion: values.codigo,
     fecha: new Date().toISOString(),
     inspector: values.inspector_nombre,
     tipo_formulario: "acta-tecnica",

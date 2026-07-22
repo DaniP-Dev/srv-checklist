@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { submitToGoogleSheets } from "@/app/actions/submit-to-google-sheets";
 import {
   SignaturePad,
   type SignaturePadHandle,
@@ -18,6 +17,10 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { SectionCard } from "@/components/ui/section-card";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { useOutboxSync } from "@/hooks/use-outbox-sync";
+import { IDENTIFICACION } from "@/lib/identificacion";
+import { submitInspection } from "@/lib/offline/submit-inspection";
 import {
   CONDICION_ESTADO_OPTIONS,
   CONDICIONES_SITIO,
@@ -37,21 +40,37 @@ import {
 } from "@/features/acta-tecnica/types";
 
 export function ActaInspeccionTecnicaForm() {
-  const firmaInspectorRef = useRef<SignaturePadHandle>(null);
   const firmaClienteRef = useRef<SignaturePadHandle>(null);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
+  const { refreshCount } = useOutboxSync();
+
+  const form = useForm<ActaTecnicaFormValues>({
+    resolver: zodResolver(actaTecnicaSchema),
+    defaultValues: createActaTecnicaDefaults(),
+  });
 
   const {
     register,
     control,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
-  } = useForm<ActaTecnicaFormValues>({
-    resolver: zodResolver(actaTecnicaSchema),
-    defaultValues: createActaTecnicaDefaults(),
+  } = form;
+
+  const onDraftLoaded = useCallback((values: ActaTecnicaFormValues) => {
+    if (values.firma_cliente) {
+      // Esperar a que el pad monte el canvas
+      window.setTimeout(() => {
+        firmaClienteRef.current?.fromDataURL(values.firma_cliente);
+      }, 100);
+    }
+  }, []);
+
+  const { clearCurrentDraft } = useFormDraft("acta-tecnica", form, {
+    onDraftLoaded,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -66,33 +85,42 @@ export function ActaInspeccionTecnicaForm() {
   const muestraRiesgoOtro = riesgosIdentificados?.includes("otro") ?? false;
 
   function onSubmit(values: ActaTecnicaFormValues) {
-    const firmaInspector = firmaInspectorRef.current?.getDataURL() ?? "";
-    const firmaCliente = firmaClienteRef.current?.getDataURL() ?? "";
+    const firmaCliente = firmaClienteRef.current?.getDataURL() ?? values.firma_cliente ?? "";
 
-    if (!firmaInspector || !firmaCliente) {
+    if (!firmaCliente) {
       setStatus("error");
-      setStatusMessage("Ambas firmas (inspector y cliente) son obligatorias.");
-      if (!firmaInspector) setValue("firma_inspector", "", { shouldValidate: true });
-      if (!firmaCliente) setValue("firma_cliente", "", { shouldValidate: true });
+      setStatusMessage("La firma del cliente es obligatoria.");
+      setValue("firma_cliente", "", { shouldValidate: true });
       return;
     }
 
     const payload = toActaTecnicaPayload({
       ...values,
-      firma_inspector: firmaInspector,
       firma_cliente: firmaCliente,
     });
 
     setStatus("idle");
     startTransition(async () => {
-      const result = await submitToGoogleSheets(payload);
-      if (result.ok) {
-        setStatus("success");
-        setStatusMessage("Acta enviada correctamente (mock Google Sheets).");
-      } else {
+      const result = await submitInspection(payload);
+      if (!result.ok) {
         setStatus("error");
         setStatusMessage(result.error);
+        return;
       }
+
+      setStatus("success");
+      if (result.mode === "queued") {
+        setStatusMessage(
+          "Guardado sin conexión. Se enviará al recuperar la red.",
+        );
+        void refreshCount();
+      } else {
+        setStatusMessage("Acta enviada correctamente (mock Google Sheets).");
+      }
+
+      firmaClienteRef.current?.clear();
+      reset(createActaTecnicaDefaults());
+      void clearCurrentDraft();
     });
   }
 
@@ -102,17 +130,17 @@ export function ActaInspeccionTecnicaForm() {
 
       <SectionCard
         title="Información General"
-        description="Datos del establecimiento y del número de inspección."
+        description="Datos del establecimiento y del código de inspección."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="numero_inspeccion" required>
-              Número de inspección
+            <Label htmlFor={IDENTIFICACION.codigo.key} required>
+              {IDENTIFICACION.codigo.label}
             </Label>
             <Input
-              id="numero_inspeccion"
-              error={errors.numero_inspeccion?.message}
-              {...register("numero_inspeccion")}
+              id={IDENTIFICACION.codigo.key}
+              error={errors.codigo?.message}
+              {...register("codigo")}
             />
           </div>
           <div>
@@ -127,47 +155,51 @@ export function ActaInspeccionTecnicaForm() {
             />
           </div>
           <div>
-            <Label htmlFor="razon_social" required>
-              Razón Social
+            <Label htmlFor={IDENTIFICACION.razon_social.key} required>
+              {IDENTIFICACION.razon_social.label}
             </Label>
             <Input
-              id="razon_social"
+              id={IDENTIFICACION.razon_social.key}
               error={errors.razon_social?.message}
               {...register("razon_social")}
             />
           </div>
           <div>
-            <Label htmlFor="nit" required>
-              NIT
-            </Label>
-            <Input id="nit" error={errors.nit?.message} {...register("nit")} />
-          </div>
-          <div>
-            <Label htmlFor="codigo_sicom" required>
-              Código SICOM
+            <Label htmlFor={IDENTIFICACION.nit.key} required>
+              {IDENTIFICACION.nit.label}
             </Label>
             <Input
-              id="codigo_sicom"
+              id={IDENTIFICACION.nit.key}
+              error={errors.nit?.message}
+              {...register("nit")}
+            />
+          </div>
+          <div>
+            <Label htmlFor={IDENTIFICACION.codigo_sicom.key} required>
+              {IDENTIFICACION.codigo_sicom.label}
+            </Label>
+            <Input
+              id={IDENTIFICACION.codigo_sicom.key}
               error={errors.codigo_sicom?.message}
               {...register("codigo_sicom")}
             />
           </div>
           <div>
-            <Label htmlFor="establecimiento" required>
-              Establecimiento
+            <Label htmlFor={IDENTIFICACION.establecimiento.key} required>
+              {IDENTIFICACION.establecimiento.label}
             </Label>
             <Input
-              id="establecimiento"
+              id={IDENTIFICACION.establecimiento.key}
               error={errors.establecimiento?.message}
               {...register("establecimiento")}
             />
           </div>
           <div className="sm:col-span-2">
-            <Label htmlFor="direccion" required>
-              Dirección
+            <Label htmlFor={IDENTIFICACION.direccion.key} required>
+              {IDENTIFICACION.direccion.label}
             </Label>
             <Input
-              id="direccion"
+              id={IDENTIFICACION.direccion.key}
               error={errors.direccion?.message}
               {...register("direccion")}
             />
@@ -475,104 +507,59 @@ export function ActaInspeccionTecnicaForm() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Firmas de Aceptación">
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
-            <p className="text-sm font-semibold text-foreground">Inspector</p>
-            <div>
-              <Label htmlFor="firma_inspector_nombre" required>
-                Nombre
-              </Label>
-              <Input
-                id="firma_inspector_nombre"
-                error={errors.firma_inspector_nombre?.message}
-                {...register("firma_inspector_nombre")}
-              />
-            </div>
-            <div>
-              <Label htmlFor="firma_inspector_fecha" required>
-                Fecha
-              </Label>
-              <Input
-                id="firma_inspector_fecha"
-                type="date"
-                error={errors.firma_inspector_fecha?.message}
-                {...register("firma_inspector_fecha")}
-              />
-            </div>
-            <div>
-              <Controller
-                control={control}
-                name="firma_inspector"
-                render={({ field }) => (
-                  <SignaturePad
-                    ref={firmaInspectorRef}
-                    label="Firma"
-                    onChange={(dataUrl) => field.onChange(dataUrl ?? "")}
-                  />
-                )}
-              />
-              {errors.firma_inspector?.message ? (
-                <p className="mt-1 text-sm text-danger" role="alert">
-                  {errors.firma_inspector.message}
-                </p>
-              ) : null}
-            </div>
+      <SectionCard title="Firma de Aceptación">
+        <div className="mx-auto max-w-xl space-y-4">
+          <p className="text-sm font-semibold text-foreground">
+            Encargado de la EDS / Cliente
+          </p>
+          <div>
+            <Label htmlFor="firma_cliente_nombre" required>
+              Nombre
+            </Label>
+            <Input
+              id="firma_cliente_nombre"
+              error={errors.firma_cliente_nombre?.message}
+              {...register("firma_cliente_nombre")}
+            />
           </div>
-
-          <div className="space-y-4">
-            <p className="text-sm font-semibold text-foreground">
-              Encargado de la EDS / Cliente
-            </p>
-            <div>
-              <Label htmlFor="firma_cliente_nombre" required>
-                Nombre
-              </Label>
-              <Input
-                id="firma_cliente_nombre"
-                error={errors.firma_cliente_nombre?.message}
-                {...register("firma_cliente_nombre")}
-              />
-            </div>
-            <div>
-              <Label htmlFor="firma_cliente_cargo" required>
-                Cargo
-              </Label>
-              <Input
-                id="firma_cliente_cargo"
-                error={errors.firma_cliente_cargo?.message}
-                {...register("firma_cliente_cargo")}
-              />
-            </div>
-            <div>
-              <Label htmlFor="firma_cliente_fecha" required>
-                Fecha
-              </Label>
-              <Input
-                id="firma_cliente_fecha"
-                type="date"
-                error={errors.firma_cliente_fecha?.message}
-                {...register("firma_cliente_fecha")}
-              />
-            </div>
-            <div>
-              <Controller
-                control={control}
-                name="firma_cliente"
-                render={({ field }) => (
-                  <SignaturePad
-                    ref={firmaClienteRef}
-                    label="Firma"
-                    onChange={(dataUrl) => field.onChange(dataUrl ?? "")}
-                  />
-                )}
-              />
-              {errors.firma_cliente?.message ? (
-                <p className="mt-1 text-sm text-danger" role="alert">
-                  {errors.firma_cliente.message}
-                </p>
-              ) : null}
-            </div>
+          <div>
+            <Label htmlFor="firma_cliente_cargo" required>
+              Cargo
+            </Label>
+            <Input
+              id="firma_cliente_cargo"
+              error={errors.firma_cliente_cargo?.message}
+              {...register("firma_cliente_cargo")}
+            />
+          </div>
+          <div>
+            <Label htmlFor="firma_cliente_fecha" required>
+              Fecha
+            </Label>
+            <Input
+              id="firma_cliente_fecha"
+              type="date"
+              error={errors.firma_cliente_fecha?.message}
+              {...register("firma_cliente_fecha")}
+            />
+          </div>
+          <div>
+            <Controller
+              control={control}
+              name="firma_cliente"
+              render={({ field }) => (
+                <SignaturePad
+                  ref={firmaClienteRef}
+                  label="Firma"
+                  onChange={(dataUrl) => field.onChange(dataUrl ?? "")}
+                />
+              )}
+            />
+            {errors.firma_cliente?.message ? (
+              <p className="mt-1 text-sm text-danger" role="alert">
+                {errors.firma_cliente.message}
+              </p>
+            ) : null}
           </div>
         </div>
       </SectionCard>

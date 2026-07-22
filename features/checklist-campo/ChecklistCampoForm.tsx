@@ -1,13 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { submitToGoogleSheets } from "@/app/actions/submit-to-google-sheets";
-import {
-  SignaturePad,
-  type SignaturePadHandle,
-} from "@/components/forms/signature-pad";
 import { SubmitBar } from "@/components/forms/submit-bar";
 import { Button } from "@/components/ui/button";
 import { FormStatusBanner } from "@/components/ui/form-status-banner";
@@ -17,6 +12,10 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { SectionCard } from "@/components/ui/section-card";
 import { SwitchField } from "@/components/ui/switch-field";
 import { Textarea } from "@/components/ui/textarea";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { useOutboxSync } from "@/hooks/use-outbox-sync";
+import { IDENTIFICACION } from "@/lib/identificacion";
+import { submitInspection } from "@/lib/offline/submit-inspection";
 import {
   ALCANCE_INSPECCION,
   CAMPO_INSPECTION_ITEMS,
@@ -62,48 +61,52 @@ function getEvidenciaError(
 }
 
 export function ChecklistCampoForm() {
-  const firmaRef = useRef<SignaturePadHandle>(null);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
+  const { refreshCount } = useOutboxSync();
+
+  const form = useForm<ChecklistCampoFormValues>({
+    resolver: zodResolver(checklistCampoSchema),
+    defaultValues: createChecklistCampoDefaults(),
+  });
 
   const {
     register,
     control,
     handleSubmit,
-    setValue,
+    reset,
     formState: { errors },
-  } = useForm<ChecklistCampoFormValues>({
-    resolver: zodResolver(checklistCampoSchema),
-    defaultValues: createChecklistCampoDefaults(),
-  });
+  } = form;
+
+  const { clearCurrentDraft } = useFormDraft("checklist-campo", form);
 
   function onSubmit(values: ChecklistCampoFormValues) {
-    const firma = firmaRef.current?.getDataURL() ?? "";
-    if (!firma) {
-      setStatus("error");
-      setStatusMessage("La firma del inspector es obligatoria.");
-      setValue("firma_inspector", "", { shouldValidate: true });
-      return;
-    }
-
-    const payload = toChecklistCampoPayload({
-      ...values,
-      firma_inspector: firma,
-    });
+    const payload = toChecklistCampoPayload(values);
 
     setStatus("idle");
     startTransition(async () => {
-      const result = await submitToGoogleSheets(payload);
-      if (result.ok) {
-        setStatus("success");
+      const result = await submitInspection(payload);
+      if (!result.ok) {
+        setStatus("error");
+        setStatusMessage(result.error);
+        return;
+      }
+
+      setStatus("success");
+      if (result.mode === "queued") {
+        setStatusMessage(
+          "Guardado sin conexión. Se enviará al recuperar la red.",
+        );
+        void refreshCount();
+      } else {
         setStatusMessage(
           "Checklist enviado correctamente (mock Google Sheets).",
         );
-      } else {
-        setStatus("error");
-        setStatusMessage(result.error);
       }
+
+      reset(createChecklistCampoDefaults());
+      void clearCurrentDraft();
     });
   }
 
@@ -114,11 +117,11 @@ export function ChecklistCampoForm() {
       <SectionCard title="Datos Generales">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label htmlFor="codigo" required>
-              Código
+            <Label htmlFor={IDENTIFICACION.codigo.key} required>
+              {IDENTIFICACION.codigo.label}
             </Label>
             <Input
-              id="codigo"
+              id={IDENTIFICACION.codigo.key}
               error={errors.codigo?.message}
               {...register("codigo")}
             />
@@ -145,39 +148,53 @@ export function ChecklistCampoForm() {
             />
           </div>
           <div>
-            <Label htmlFor="razon_social" required>
-              Razón Social
+            <Label htmlFor={IDENTIFICACION.razon_social.key} required>
+              {IDENTIFICACION.razon_social.label}
             </Label>
             <Input
-              id="razon_social"
+              id={IDENTIFICACION.razon_social.key}
               error={errors.razon_social?.message}
               {...register("razon_social")}
             />
           </div>
           <div>
-            <Label htmlFor="nit" required>
-              NIT
-            </Label>
-            <Input id="nit" error={errors.nit?.message} {...register("nit")} />
-          </div>
-          <div>
-            <Label htmlFor="nombre_eds" required>
-              Nombre de la EDS
+            <Label htmlFor={IDENTIFICACION.nit.key} required>
+              {IDENTIFICACION.nit.label}
             </Label>
             <Input
-              id="nombre_eds"
-              error={errors.nombre_eds?.message}
-              {...register("nombre_eds")}
+              id={IDENTIFICACION.nit.key}
+              error={errors.nit?.message}
+              {...register("nit")}
+            />
+          </div>
+          <div>
+            <Label htmlFor={IDENTIFICACION.codigo_sicom.key} required>
+              {IDENTIFICACION.codigo_sicom.label}
+            </Label>
+            <Input
+              id={IDENTIFICACION.codigo_sicom.key}
+              error={errors.codigo_sicom?.message}
+              {...register("codigo_sicom")}
+            />
+          </div>
+          <div>
+            <Label htmlFor={IDENTIFICACION.establecimiento.key} required>
+              {IDENTIFICACION.establecimiento.label}
+            </Label>
+            <Input
+              id={IDENTIFICACION.establecimiento.key}
+              error={errors.establecimiento?.message}
+              {...register("establecimiento")}
             />
           </div>
           <div className="md:col-span-2">
-            <Label htmlFor="ubicacion" required>
-              Ubicación
+            <Label htmlFor={IDENTIFICACION.direccion.key} required>
+              {IDENTIFICACION.direccion.label}
             </Label>
             <Input
-              id="ubicacion"
-              error={errors.ubicacion?.message}
-              {...register("ubicacion")}
+              id={IDENTIFICACION.direccion.key}
+              error={errors.direccion?.message}
+              {...register("direccion")}
             />
           </div>
           <div className="md:col-span-2 rounded-lg border border-border bg-background/50 px-4 py-3">
@@ -326,24 +343,6 @@ export function ChecklistCampoForm() {
               rows={4}
               {...register("observaciones_tecnicas")}
             />
-          </div>
-          <div>
-            <Controller
-              control={control}
-              name="firma_inspector"
-              render={({ field }) => (
-                <SignaturePad
-                  ref={firmaRef}
-                  label="Firma del inspector"
-                  onChange={(dataUrl) => field.onChange(dataUrl ?? "")}
-                />
-              )}
-            />
-            {errors.firma_inspector?.message ? (
-              <p className="mt-1 text-sm text-danger" role="alert">
-                {errors.firma_inspector.message}
-              </p>
-            ) : null}
           </div>
         </div>
       </SectionCard>

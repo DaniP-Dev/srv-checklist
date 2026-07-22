@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 
 export interface SignaturePadHandle {
   getDataURL: () => string | null;
+  fromDataURL: (dataUrl: string) => void;
   clear: () => void;
   isEmpty: () => boolean;
 }
@@ -93,6 +94,12 @@ export const SignaturePad = forwardRef<SignaturePadHandle, SignaturePadProps>(
       getDataURL: () => {
         if (!canvasRef.current || canvasRef.current.isEmpty()) return null;
         return canvasRef.current.toDataURL("image/png");
+      },
+      fromDataURL: (dataUrl: string) => {
+        if (!canvasRef.current || !dataUrl) return;
+        canvasRef.current.fromDataURL(dataUrl);
+        setIsEmpty(false);
+        onChange?.(dataUrl);
       },
       clear: () => {
         canvasRef.current?.clear();

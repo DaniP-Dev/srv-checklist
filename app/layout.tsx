@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SerwistProvider } from "@/components/pwa/serwist-provider";
+import { OfflineStatusBar } from "@/components/pwa/offline-status-bar";
+import { OutboxSyncProvider } from "@/components/pwa/outbox-sync-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,19 +15,38 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_NAME = "SRV Checklist";
+const APP_DESCRIPTION =
+  "Sistema de formularios de inspección técnica y checklists de campo.";
+
 export const metadata: Metadata = {
+  applicationName: APP_NAME,
   title: {
-    default: "SRV Checklist",
+    default: APP_NAME,
     template: "%s | SRV Checklist",
   },
-  description:
-    "Sistema de formularios de inspección técnica y checklists de campo.",
+  description: APP_DESCRIPTION,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: APP_NAME,
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: "#0f4c81",
 };
 
 export default function RootLayout({
@@ -38,7 +60,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        {children}
+        <SerwistProvider swUrl="/serwist/sw.js">
+          <OutboxSyncProvider>
+            <OfflineStatusBar />
+            {children}
+          </OutboxSyncProvider>
+        </SerwistProvider>
       </body>
     </html>
   );

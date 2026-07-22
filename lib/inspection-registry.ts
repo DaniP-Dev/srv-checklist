@@ -11,7 +11,7 @@ export const INSPECTION_REGISTRY: Record<InspectionFormType, InspectionMeta> = {
     slug: "acta-tecnica",
     label: "Acta de Inspección Técnica",
     description:
-      "Registro formal de visita técnica con condiciones del sitio, ATS y firmas.",
+      "Registro formal de visita técnica con condiciones del sitio, ATS y firma del cliente.",
   },
   "checklist-campo": {
     slug: "checklist-campo",
