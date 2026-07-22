@@ -18,6 +18,23 @@ export interface DraftRecord {
   values: unknown;
 }
 
+export type TipoInspeccionSesion = "EDS" | "Hermeticidad";
+
+export interface InspectionSession {
+  id: "current";
+  codigo: string;
+  tipoInspeccion: TipoInspeccionSesion;
+  razon_social: string;
+  nit: string;
+  codigo_sicom: string;
+  establecimiento: string;
+  direccion: string;
+  inspector_nombre: string;
+  inspector_celular?: string;
+  inspector_correo?: string;
+  updatedAt: string;
+}
+
 interface SrvChecklistDB extends DBSchema {
   drafts: {
     key: InspectionFormType;
@@ -28,10 +45,14 @@ interface SrvChecklistDB extends DBSchema {
     value: OutboxItem;
     indexes: { "by-createdAt": string; "by-status": OutboxStatus };
   };
+  "inspection-session": {
+    key: string;
+    value: InspectionSession;
+  };
 }
 
 const DB_NAME = "srv-checklist";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<SrvChecklistDB>> | null = null;
 
@@ -49,6 +70,9 @@ export function getDb() {
           const outbox = db.createObjectStore("outbox", { keyPath: "localId" });
           outbox.createIndex("by-createdAt", "createdAt");
           outbox.createIndex("by-status", "status");
+        }
+        if (!db.objectStoreNames.contains("inspection-session")) {
+          db.createObjectStore("inspection-session", { keyPath: "id" });
         }
       },
     });

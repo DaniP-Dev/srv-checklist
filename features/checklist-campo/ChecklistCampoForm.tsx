@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Controller, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitBar } from "@/components/forms/submit-bar";
@@ -16,6 +17,11 @@ import { useFormDraft } from "@/hooks/use-form-draft";
 import { useOutboxSync } from "@/hooks/use-outbox-sync";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import { submitInspection } from "@/lib/offline/submit-inspection";
+import {
+  clearSession,
+  loadSession,
+  type InspectionSession,
+} from "@/lib/offline/session";
 import {
   ALCANCE_INSPECCION,
   CAMPO_INSPECTION_ITEMS,
@@ -33,6 +39,9 @@ import {
   toChecklistCampoPayload,
   type ChecklistCampoFormValues,
 } from "@/features/checklist-campo/types";
+
+const SESSION_LOCKED_CLASS =
+  "bg-background/80 text-muted read-only:cursor-default";
 
 function evidenciaTipoClassName(tipo: EvidenciaTipo) {
   if (tipo === "fotografica") {
@@ -60,10 +69,28 @@ function getEvidenciaError(
   return undefined;
 }
 
+function applySessionFields(
+  setValue: ReturnType<
+    typeof useForm<ChecklistCampoFormValues>
+  >["setValue"],
+  session: InspectionSession,
+) {
+  setValue("codigo", session.codigo);
+  setValue("inspector", session.inspector_nombre);
+  setValue("razon_social", session.razon_social);
+  setValue("nit", session.nit);
+  setValue("codigo_sicom", session.codigo_sicom);
+  setValue("establecimiento", session.establecimiento);
+  setValue("direccion", session.direccion);
+}
+
 export function ChecklistCampoForm() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
+  const [sessionReady, setSessionReady] = useState(false);
+  const sessionRef = useRef<InspectionSession | null>(null);
   const { refreshCount } = useOutboxSync();
 
   const form = useForm<ChecklistCampoFormValues>({
@@ -76,13 +103,73 @@ export function ChecklistCampoForm() {
     control,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = form;
 
-  const { clearCurrentDraft } = useFormDraft("checklist-campo", form);
+  const onDraftLoaded = useCallback((values: ChecklistCampoFormValues) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    // Conservar respuestas del borrador, forzar identificación desde la sesión.
+    reset({
+      ...values,
+      codigo: session.codigo,
+      inspector: session.inspector_nombre,
+      razon_social: session.razon_social,
+      nit: session.nit,
+      codigo_sicom: session.codigo_sicom,
+      establecimiento: session.establecimiento,
+      direccion: session.direccion,
+    });
+  }, [reset]);
+
+  const { clearCurrentDraft } = useFormDraft("checklist-campo", form, {
+    enabled: sessionReady,
+    onDraftLoaded,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const session = await loadSession();
+        if (cancelled) return;
+
+        if (!session || session.tipoInspeccion !== "EDS") {
+          router.replace("/");
+          return;
+        }
+
+        sessionRef.current = session;
+        applySessionFields(setValue, session);
+        setSessionReady(true);
+      } catch {
+        if (!cancelled) router.replace("/");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router, setValue]);
 
   function onSubmit(values: ChecklistCampoFormValues) {
-    const payload = toChecklistCampoPayload(values);
+    const session = sessionRef.current;
+    const lockedValues: ChecklistCampoFormValues = session
+      ? {
+          ...values,
+          codigo: session.codigo,
+          inspector: session.inspector_nombre,
+          razon_social: session.razon_social,
+          nit: session.nit,
+          codigo_sicom: session.codigo_sicom,
+          establecimiento: session.establecimiento,
+          direccion: session.direccion,
+        }
+      : values;
+
+    const payload = toChecklistCampoPayload(lockedValues);
 
     setStatus("idle");
     startTransition(async () => {
@@ -105,16 +192,30 @@ export function ChecklistCampoForm() {
         );
       }
 
+      await clearSession();
+      sessionRef.current = null;
       reset(createChecklistCampoDefaults());
       void clearCurrentDraft();
+      router.push("/");
     });
+  }
+
+  if (!sessionReady) {
+    return (
+      <p className="text-base text-muted">
+        Verificando acta de inspección asignada…
+      </p>
+    );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-submit-safe">
       <FormStatusBanner status={status} message={statusMessage} />
 
-      <SectionCard title="Datos Generales">
+      <SectionCard
+        title="Datos Generales"
+        description="Datos traídos del acta de inspección (solo lectura)."
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <Label htmlFor={IDENTIFICACION.codigo.key} required>
@@ -123,6 +224,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.codigo.key}
               error={errors.codigo?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("codigo")}
             />
           </div>
@@ -144,6 +247,8 @@ export function ChecklistCampoForm() {
             <Input
               id="inspector"
               error={errors.inspector?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("inspector")}
             />
           </div>
@@ -154,6 +259,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.razon_social.key}
               error={errors.razon_social?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("razon_social")}
             />
           </div>
@@ -164,6 +271,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.nit.key}
               error={errors.nit?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("nit")}
             />
           </div>
@@ -174,6 +283,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.codigo_sicom.key}
               error={errors.codigo_sicom?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("codigo_sicom")}
             />
           </div>
@@ -184,6 +295,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.establecimiento.key}
               error={errors.establecimiento?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("establecimiento")}
             />
           </div>
@@ -194,6 +307,8 @@ export function ChecklistCampoForm() {
             <Input
               id={IDENTIFICACION.direccion.key}
               error={errors.direccion?.message}
+              readOnly
+              className={SESSION_LOCKED_CLASS}
               {...register("direccion")}
             />
           </div>

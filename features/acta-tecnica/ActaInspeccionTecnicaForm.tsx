@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -17,10 +18,15 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { SectionCard } from "@/components/ui/section-card";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmSessionModal } from "@/features/acta-tecnica/ConfirmSessionModal";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import { useOutboxSync } from "@/hooks/use-outbox-sync";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import { submitInspection } from "@/lib/offline/submit-inspection";
+import {
+  saveSession,
+  type InspectionSessionInput,
+} from "@/lib/offline/session";
 import {
   CONDICION_ESTADO_OPTIONS,
   CONDICIONES_SITIO,
@@ -39,11 +45,42 @@ import {
   type ActaTecnicaFormValues,
 } from "@/features/acta-tecnica/types";
 
+const SESSION_FIELDS = [
+  "codigo",
+  "tipo_inspeccion",
+  "razon_social",
+  "nit",
+  "codigo_sicom",
+  "establecimiento",
+  "direccion",
+  "inspector_nombre",
+] as const satisfies readonly (keyof ActaTecnicaFormValues)[];
+
+function toSessionInput(values: ActaTecnicaFormValues): InspectionSessionInput {
+  return {
+    codigo: values.codigo.trim(),
+    tipoInspeccion: values.tipo_inspeccion,
+    razon_social: values.razon_social.trim(),
+    nit: values.nit.trim(),
+    codigo_sicom: values.codigo_sicom.trim(),
+    establecimiento: values.establecimiento.trim(),
+    direccion: values.direccion.trim(),
+    inspector_nombre: values.inspector_nombre.trim(),
+    inspector_celular: values.inspector_celular.trim() || undefined,
+    inspector_correo: values.inspector_correo.trim() || undefined,
+  };
+}
+
 export function ActaInspeccionTecnicaForm() {
+  const router = useRouter();
   const firmaClienteRef = useRef<SignaturePadHandle>(null);
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [sessionPreview, setSessionPreview] =
+    useState<InspectionSessionInput | null>(null);
+  const [confirmingSession, setConfirmingSession] = useState(false);
   const { refreshCount } = useOutboxSync();
 
   const form = useForm<ActaTecnicaFormValues>({
@@ -57,6 +94,8 @@ export function ActaInspeccionTecnicaForm() {
     handleSubmit,
     setValue,
     reset,
+    getValues,
+    trigger,
     formState: { errors },
   } = form;
 
@@ -124,7 +163,51 @@ export function ActaInspeccionTecnicaForm() {
     });
   }
 
+  async function handleContinueClick() {
+    const valid = await trigger([...SESSION_FIELDS]);
+    if (!valid) {
+      setStatus("error");
+      setStatusMessage(
+        "Complete identificación, tipo de inspección e inspector para continuar.",
+      );
+      return;
+    }
+
+    setStatus("idle");
+    setStatusMessage(undefined);
+    setSessionPreview(toSessionInput(getValues()));
+    setModalOpen(true);
+  }
+
+  async function handleConfirmSession() {
+    if (!sessionPreview) return;
+
+    setConfirmingSession(true);
+    try {
+      await saveSession(sessionPreview);
+      setModalOpen(false);
+
+      if (sessionPreview.tipoInspeccion === "EDS") {
+        router.push("/inspeccion/checklist-campo");
+        return;
+      }
+
+      setStatus("success");
+      setStatusMessage(
+        "Sesión de Hermeticidad guardada. El checklist correspondiente estará disponible próximamente.",
+      );
+      router.push("/");
+    } catch {
+      setStatus("error");
+      setStatusMessage("No se pudo guardar la sesión de inspección.");
+      setModalOpen(false);
+    } finally {
+      setConfirmingSession(false);
+    }
+  }
+
   return (
+    <>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-submit-safe">
       <FormStatusBanner status={status} message={statusMessage} />
 
@@ -591,10 +674,31 @@ export function ActaInspeccionTecnicaForm() {
       </SectionCard>
 
       <SubmitBar>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isPending || confirmingSession}
+          onClick={() => void handleContinueClick()}
+          className="w-full md:w-auto"
+        >
+          Continuar al checklist
+        </Button>
         <Button type="submit" disabled={isPending} className="w-full md:w-auto">
           {isPending ? "Enviando…" : "Enviar acta"}
         </Button>
       </SubmitBar>
     </form>
+
+    <ConfirmSessionModal
+      open={modalOpen}
+      data={sessionPreview}
+      confirming={confirmingSession}
+      onCancel={() => {
+        if (confirmingSession) return;
+        setModalOpen(false);
+      }}
+      onConfirm={() => void handleConfirmSession()}
+    />
+    </>
   );
 }

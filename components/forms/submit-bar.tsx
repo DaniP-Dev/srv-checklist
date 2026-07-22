@@ -18,7 +18,9 @@ export function SubmitBar({ children }: SubmitBarProps) {
       }}
     >
       <div className="mx-auto flex max-w-5xl justify-stretch md:justify-end">
-        <div className="w-full md:w-auto md:min-w-52">{children}</div>
+        <div className="flex w-full flex-col-reverse gap-2 md:w-auto md:min-w-52 md:flex-row md:justify-end">
+          {children}
+        </div>
       </div>
     </div>
   );

@@ -11,15 +11,35 @@ export const INSPECTION_REGISTRY: Record<InspectionFormType, InspectionMeta> = {
     slug: "acta-tecnica",
     label: "Acta de Inspección Técnica",
     description:
-      "Registro formal de visita técnica con condiciones del sitio, ATS y firma del cliente.",
+      "Paso 1: registro formal de visita con datos del sitio, ATS y firma. Requerido antes del checklist.",
   },
   "checklist-campo": {
     slug: "checklist-campo",
-    label: "Checklist de Inspección en Campo",
+    label: "Checklist EDS",
     description:
       "Inspección detallada de instalaciones EDS con evaluación C / NC / N/A.",
   },
 };
+
+/** Placeholder de checklists futuros (sin ruta de formulario aún). */
+export interface ChecklistPlaceholderMeta {
+  id: string;
+  label: string;
+  description: string;
+  tipoInspeccion: "Hermeticidad";
+  comingSoon: true;
+}
+
+export const CHECKLIST_PLACEHOLDERS: ChecklistPlaceholderMeta[] = [
+  {
+    id: "checklist-hermeticidad",
+    label: "Checklist Hermeticidad",
+    description:
+      "Checklist de campo para pruebas de hermeticidad. Próximamente.",
+    tipoInspeccion: "Hermeticidad",
+    comingSoon: true,
+  },
+];
 
 export const INSPECTION_TYPES = Object.keys(
   INSPECTION_REGISTRY,
