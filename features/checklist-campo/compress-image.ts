@@ -1,7 +1,7 @@
 import type { ArchivoAdjunto } from "@/features/checklist-campo/types";
 
-const DEFAULT_MAX_SIDE = 1280;
-const DEFAULT_QUALITY = 0.7;
+const DEFAULT_MAX_SIDE = 960;
+const DEFAULT_QUALITY = 0.55;
 
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
