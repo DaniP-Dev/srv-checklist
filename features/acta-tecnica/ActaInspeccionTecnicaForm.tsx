@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,9 +20,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmSessionModal } from "@/features/acta-tecnica/ConfirmSessionModal";
 import { useFormDraft } from "@/hooks/use-form-draft";
-import { useOutboxSync } from "@/hooks/use-outbox-sync";
 import { IDENTIFICACION } from "@/lib/identificacion";
-import { submitInspection } from "@/lib/offline/submit-inspection";
 import {
   saveSession,
   type InspectionSessionInput,
@@ -41,7 +39,6 @@ import {
 import {
   actaTecnicaSchema,
   createActaTecnicaDefaults,
-  toActaTecnicaPayload,
   type ActaTecnicaFormValues,
 } from "@/features/acta-tecnica/types";
 
@@ -74,14 +71,12 @@ function toSessionInput(values: ActaTecnicaFormValues): InspectionSessionInput {
 export function ActaInspeccionTecnicaForm() {
   const router = useRouter();
   const firmaClienteRef = useRef<SignaturePadHandle>(null);
-  const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [statusMessage, setStatusMessage] = useState<string | undefined>();
   const [modalOpen, setModalOpen] = useState(false);
   const [sessionPreview, setSessionPreview] =
     useState<InspectionSessionInput | null>(null);
   const [confirmingSession, setConfirmingSession] = useState(false);
-  const { refreshCount } = useOutboxSync();
 
   const form = useForm<ActaTecnicaFormValues>({
     resolver: zodResolver(actaTecnicaSchema),
@@ -91,9 +86,6 @@ export function ActaInspeccionTecnicaForm() {
   const {
     register,
     control,
-    handleSubmit,
-    setValue,
-    reset,
     getValues,
     trigger,
     formState: { errors },
@@ -108,7 +100,7 @@ export function ActaInspeccionTecnicaForm() {
     }
   }, []);
 
-  const { clearCurrentDraft } = useFormDraft("acta-tecnica", form, {
+  useFormDraft("acta-tecnica", form, {
     onDraftLoaded,
   });
 
@@ -122,46 +114,6 @@ export function ActaInspeccionTecnicaForm() {
     name: "riesgos_identificados",
   });
   const muestraRiesgoOtro = riesgosIdentificados?.includes("otro") ?? false;
-
-  function onSubmit(values: ActaTecnicaFormValues) {
-    const firmaCliente = firmaClienteRef.current?.getDataURL() ?? values.firma_cliente ?? "";
-
-    if (!firmaCliente) {
-      setStatus("error");
-      setStatusMessage("La firma del cliente es obligatoria.");
-      setValue("firma_cliente", "", { shouldValidate: true });
-      return;
-    }
-
-    const payload = toActaTecnicaPayload({
-      ...values,
-      firma_cliente: firmaCliente,
-    });
-
-    setStatus("idle");
-    startTransition(async () => {
-      const result = await submitInspection(payload);
-      if (!result.ok) {
-        setStatus("error");
-        setStatusMessage(result.error);
-        return;
-      }
-
-      setStatus("success");
-      if (result.mode === "queued") {
-        setStatusMessage(
-          "Guardado sin conexión. Se enviará al recuperar la red.",
-        );
-        void refreshCount();
-      } else {
-        setStatusMessage("Acta enviada correctamente (mock Google Sheets).");
-      }
-
-      firmaClienteRef.current?.clear();
-      reset(createActaTecnicaDefaults());
-      void clearCurrentDraft();
-    });
-  }
 
   async function handleContinueClick() {
     const valid = await trigger([...SESSION_FIELDS]);
@@ -208,7 +160,10 @@ export function ActaInspeccionTecnicaForm() {
 
   return (
     <>
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-submit-safe">
+    <form
+      onSubmit={(event) => event.preventDefault()}
+      className="space-y-6 pb-submit-safe"
+    >
       <FormStatusBanner status={status} message={statusMessage} />
 
       <SectionCard
@@ -676,15 +631,11 @@ export function ActaInspeccionTecnicaForm() {
       <SubmitBar>
         <Button
           type="button"
-          variant="secondary"
-          disabled={isPending || confirmingSession}
+          disabled={confirmingSession}
           onClick={() => void handleContinueClick()}
           className="w-full md:w-auto"
         >
           Continuar al checklist
-        </Button>
-        <Button type="submit" disabled={isPending} className="w-full md:w-auto">
-          {isPending ? "Enviando…" : "Enviar acta"}
         </Button>
       </SubmitBar>
     </form>

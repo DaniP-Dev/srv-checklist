@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { InspectionSessionInput } from "@/lib/offline/session";
+
+const COUNTDOWN_SECONDS = 10;
 
 interface ConfirmSessionModalProps {
   open: boolean;
@@ -32,7 +35,22 @@ export function ConfirmSessionModal({
   onCancel,
   onConfirm,
 }: ConfirmSessionModalProps) {
+  const [secondsLeft, setSecondsLeft] = useState(COUNTDOWN_SECONDS);
+
+  useEffect(() => {
+    if (!open) return;
+
+    setSecondsLeft(COUNTDOWN_SECONDS);
+    const id = window.setInterval(() => {
+      setSecondsLeft((current) => (current <= 1 ? 0 : current - 1));
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [open]);
+
   if (!open || !data) return null;
+
+  const canConfirm = secondsLeft === 0 && !confirming;
 
   return (
     <div
@@ -83,10 +101,14 @@ export function ConfirmSessionModal({
           <Button
             type="button"
             onClick={onConfirm}
-            disabled={confirming}
+            disabled={!canConfirm}
             className="w-full sm:w-auto"
           >
-            {confirming ? "Continuando…" : "Confirmar y continuar"}
+            {confirming
+              ? "Continuando…"
+              : secondsLeft > 0
+                ? `Espere ${secondsLeft} s…`
+                : "Confirmar y continuar"}
           </Button>
         </div>
       </div>
