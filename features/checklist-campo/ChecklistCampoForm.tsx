@@ -23,7 +23,6 @@ import {
   type InspectionSession,
 } from "@/lib/offline/session";
 import {
-  ALCANCE_INSPECCION,
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
   ETAPA_DOS_OPTIONS,
@@ -79,7 +78,6 @@ function applySessionFields(
   setValue("inspector", session.inspector_nombre);
   setValue("razon_social", session.razon_social);
   setValue("nit", session.nit);
-  setValue("codigo_sicom", session.codigo_sicom);
   setValue("establecimiento", session.establecimiento);
   setValue("direccion", session.direccion);
 }
@@ -117,7 +115,6 @@ export function ChecklistCampoForm() {
       inspector: session.inspector_nombre,
       razon_social: session.razon_social,
       nit: session.nit,
-      codigo_sicom: session.codigo_sicom,
       establecimiento: session.establecimiento,
       direccion: session.direccion,
     });
@@ -163,13 +160,13 @@ export function ChecklistCampoForm() {
           inspector: session.inspector_nombre,
           razon_social: session.razon_social,
           nit: session.nit,
-          codigo_sicom: session.codigo_sicom,
           establecimiento: session.establecimiento,
           direccion: session.direccion,
         }
       : values;
 
     const payload = toChecklistCampoPayload(lockedValues);
+    // TODO: Fusionar acta_completa con payload de checklist
 
     setStatus("idle");
     startTransition(async () => {
@@ -277,18 +274,6 @@ export function ChecklistCampoForm() {
             />
           </div>
           <div>
-            <Label htmlFor={IDENTIFICACION.codigo_sicom.key} required>
-              {IDENTIFICACION.codigo_sicom.label}
-            </Label>
-            <Input
-              id={IDENTIFICACION.codigo_sicom.key}
-              error={errors.codigo_sicom?.message}
-              readOnly
-              className={SESSION_LOCKED_CLASS}
-              {...register("codigo_sicom")}
-            />
-          </div>
-          <div>
             <Label htmlFor={IDENTIFICACION.establecimiento.key} required>
               {IDENTIFICACION.establecimiento.label}
             </Label>
@@ -311,12 +296,6 @@ export function ChecklistCampoForm() {
               className={SESSION_LOCKED_CLASS}
               {...register("direccion")}
             />
-          </div>
-          <div className="md:col-span-2 rounded-lg border border-border bg-background/50 px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-              Alcance
-            </p>
-            <p className="mt-1 text-sm text-foreground">{ALCANCE_INSPECCION}</p>
           </div>
         </div>
       </SectionCard>

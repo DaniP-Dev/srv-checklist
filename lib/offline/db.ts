@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import type { ActaTecnicaData } from "@/features/acta-tecnica/types";
 import type { BaseInspectionPayload, InspectionFormType } from "@/lib/types/inspection";
 
 export type OutboxStatus = "pending" | "syncing" | "failed";
@@ -32,6 +33,7 @@ export interface InspectionSession {
   inspector_nombre: string;
   inspector_celular?: string;
   inspector_correo?: string;
+  acta_completa?: BaseInspectionPayload<ActaTecnicaData>;
   updatedAt: string;
 }
 

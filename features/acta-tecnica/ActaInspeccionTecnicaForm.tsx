@@ -39,6 +39,7 @@ import {
 import {
   actaTecnicaSchema,
   createActaTecnicaDefaults,
+  toActaTecnicaPayload,
   type ActaTecnicaFormValues,
 } from "@/features/acta-tecnica/types";
 
@@ -115,6 +116,18 @@ export function ActaInspeccionTecnicaForm() {
   });
   const muestraRiesgoOtro = riesgosIdentificados?.includes("otro") ?? false;
 
+  function buildSessionInput(): InspectionSessionInput {
+    const values = getValues();
+    const firma =
+      firmaClienteRef.current?.getDataURL() ?? values.firma_cliente;
+    const valuesWithFirma = { ...values, firma_cliente: firma ?? "" };
+
+    return {
+      ...toSessionInput(valuesWithFirma),
+      acta_completa: toActaTecnicaPayload(valuesWithFirma),
+    };
+  }
+
   async function handleContinueClick() {
     const valid = await trigger([...SESSION_FIELDS]);
     if (!valid) {
@@ -127,7 +140,7 @@ export function ActaInspeccionTecnicaForm() {
 
     setStatus("idle");
     setStatusMessage(undefined);
-    setSessionPreview(toSessionInput(getValues()));
+    setSessionPreview(buildSessionInput());
     setModalOpen(true);
   }
 
@@ -136,10 +149,11 @@ export function ActaInspeccionTecnicaForm() {
 
     setConfirmingSession(true);
     try {
-      await saveSession(sessionPreview);
+      const sessionInput = buildSessionInput();
+      await saveSession(sessionInput);
       setModalOpen(false);
 
-      if (sessionPreview.tipoInspeccion === "EDS") {
+      if (sessionInput.tipoInspeccion === "EDS") {
         router.push("/inspeccion/checklist-campo");
         return;
       }

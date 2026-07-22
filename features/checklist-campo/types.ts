@@ -59,9 +59,6 @@ export const checklistCampoSchema = z
       .string()
       .min(1, IDENTIFICACION.razon_social.requiredMessage),
     nit: z.string().min(1, IDENTIFICACION.nit.requiredMessage),
-    codigo_sicom: z
-      .string()
-      .min(1, IDENTIFICACION.codigo_sicom.requiredMessage),
     establecimiento: z
       .string()
       .min(1, IDENTIFICACION.establecimiento.requiredMessage),
@@ -137,7 +134,6 @@ export function createChecklistCampoDefaults(): ChecklistCampoFormValues {
     inspector: "",
     razon_social: "",
     nit: "",
-    codigo_sicom: "",
     establecimiento: "",
     direccion: "",
     condiciones_generales,

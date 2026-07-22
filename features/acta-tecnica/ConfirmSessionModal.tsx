@@ -14,8 +14,13 @@ interface ConfirmSessionModalProps {
   onConfirm: () => void;
 }
 
+type ReviewFieldKey = Exclude<
+  keyof InspectionSessionInput,
+  "acta_completa" | "inspector_celular" | "inspector_correo"
+>;
+
 const REVIEW_FIELDS: {
-  key: keyof InspectionSessionInput;
+  key: ReviewFieldKey;
   label: string;
 }[] = [
   { key: "codigo", label: "Código de inspección" },
