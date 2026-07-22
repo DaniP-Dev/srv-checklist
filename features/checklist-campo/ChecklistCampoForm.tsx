@@ -22,6 +22,10 @@ import {
   loadSession,
   type InspectionSession,
 } from "@/lib/offline/session";
+import type {
+  BaseInspectionPayload,
+  UnifiedInspectionData,
+} from "@/lib/types/inspection";
 import {
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
@@ -32,6 +36,7 @@ import {
 } from "@/features/checklist-campo/constants";
 import { EvidenciaField } from "@/features/checklist-campo/EvidenciaField";
 import {
+  buildEvidenciasFotograficas,
   checklistCampoSchema,
   createChecklistCampoDefaults,
   createEmptyEvidencia,
@@ -165,8 +170,29 @@ export function ChecklistCampoForm() {
         }
       : values;
 
-    const payload = toChecklistCampoPayload(lockedValues);
-    // TODO: Fusionar acta_completa con payload de checklist
+    const checklistPayload = toChecklistCampoPayload(lockedValues);
+
+    if (!session?.acta_completa) {
+      setStatus("error");
+      setStatusMessage(
+        "No se encontró el acta de inspección en la sesión. Vuelva a completar el acta.",
+      );
+      return;
+    }
+
+    const payload: BaseInspectionPayload<UnifiedInspectionData> = {
+      id_inspeccion: checklistPayload.id_inspeccion,
+      fecha: checklistPayload.fecha,
+      inspector: checklistPayload.inspector,
+      tipo_formulario: "checklist-campo",
+      data: {
+        acta: session.acta_completa,
+        checklist: checklistPayload,
+        // Array plano 1:1 con el Word "VERIFICACION FOTOGRAFICA…"
+        // (codigo_ref, item_nombre, evaluacion, observacion, foto_base64).
+        evidencias_fotograficas: buildEvidenciasFotograficas(lockedValues),
+      },
+    };
 
     setStatus("idle");
     startTransition(async () => {
@@ -184,9 +210,7 @@ export function ChecklistCampoForm() {
         );
         void refreshCount();
       } else {
-        setStatusMessage(
-          "Checklist enviado correctamente (mock Google Sheets).",
-        );
+        setStatusMessage("Checklist enviado correctamente.");
       }
 
       await clearSession();

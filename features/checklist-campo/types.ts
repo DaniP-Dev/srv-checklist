@@ -1,10 +1,14 @@
 import { z } from "zod";
-import type { BaseInspectionPayload } from "@/lib/types/inspection";
+import type {
+  BaseInspectionPayload,
+  EvidenciaFotografica,
+} from "@/lib/types/inspection";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import {
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
 } from "@/features/checklist-campo/constants";
+import { REGISTRO_FOTOGRAFICO_ASPECTOS } from "@/features/checklist-campo/registro-fotografico";
 
 export const MAX_ARCHIVOS_POR_ITEM = 3;
 export const MAX_PDF_BYTES = 5 * 1024 * 1024;
@@ -156,4 +160,45 @@ export function toChecklistCampoPayload(
     tipo_formulario: "checklist-campo",
     data: values,
   };
+}
+
+/**
+ * Construye el array plano del Registro Fotográfico en el orden del
+ * documento oficial. Una entrada por archivo de imagen; si no hay
+ * imágenes, una entrada con `foto_base64: null`.
+ */
+export function buildEvidenciasFotograficas(
+  values: ChecklistCampoFormValues,
+): EvidenciaFotografica[] {
+  const result: EvidenciaFotografica[] = [];
+
+  for (const aspecto of REGISTRO_FOTOGRAFICO_ASPECTOS) {
+    const item = values.items[aspecto.itemKey];
+    const imagenes = item.evidencia.archivos.filter((archivo) =>
+      archivo.mimeType.startsWith("image/"),
+    );
+
+    if (imagenes.length === 0) {
+      result.push({
+        codigo_ref: aspecto.codigo,
+        item_nombre: aspecto.aspecto,
+        evaluacion: item.evaluacion,
+        observacion: item.evidencia.notas,
+        foto_base64: null,
+      });
+      continue;
+    }
+
+    for (const imagen of imagenes) {
+      result.push({
+        codigo_ref: aspecto.codigo,
+        item_nombre: aspecto.aspecto,
+        evaluacion: item.evaluacion,
+        observacion: item.evidencia.notas,
+        foto_base64: imagen.dataUrl,
+      });
+    }
+  }
+
+  return result;
 }

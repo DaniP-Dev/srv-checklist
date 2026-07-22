@@ -6,24 +6,8 @@ import type {
 } from "@/lib/types/inspection";
 
 /**
- * Server Action unificada para enviar cualquier checklist a Google Sheets.
- *
- * Integración pendiente — descomentar y configurar cuando el webhook esté listo:
- *
- * 1. Google Apps Script (recomendado para prototipo):
- *    const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
- *    if (!webhookUrl) return { ok: false, error: "Falta GOOGLE_SHEETS_WEBHOOK_URL" };
- *    const res = await fetch(webhookUrl, {
- *      method: "POST",
- *      headers: { "Content-Type": "application/json" },
- *      body: JSON.stringify(payload),
- *    });
- *    if (!res.ok) return { ok: false, error: `Sheets webhook ${res.status}` };
- *
- * 2. Google Sheets API con service account:
- *    - Usar googleapis + credentials JSON
- *    - Mapear payload.data a columnas por tipo_formulario
- *    - Append row en la hoja correspondiente
+ * Server Action unificada para enviar cualquier checklist a Google Sheets
+ * vía Google Apps Script webhook.
  */
 export async function submitToGoogleSheets(
   payload: BaseInspectionPayload,
@@ -38,17 +22,31 @@ export async function submitToGoogleSheets(
     return { ok: false, error: "inspector es requerido" };
   }
 
-  // Mock: loguea el payload hasta conectar el webhook / API real
-  console.log(
-    "[submitToGoogleSheets] mock OK",
-    payload.tipo_formulario,
-    payload.id_inspeccion,
-    {
-      fecha: payload.fecha,
-      inspector: payload.inspector,
-      dataKeys: Object.keys(payload.data ?? {}),
-    },
-  );
+  const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+  if (!webhookUrl) {
+    return { ok: false, error: "Falta GOOGLE_SHEETS_WEBHOOK_URL" };
+  }
 
-  return { ok: true };
+  try {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      return { ok: true };
+    }
+
+    return {
+      ok: false,
+      error: `Sheets webhook ${res.status}`,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Error al enviar a Google Sheets";
+    return { ok: false, error: message };
+  }
 }
