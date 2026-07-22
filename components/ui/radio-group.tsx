@@ -40,7 +40,7 @@ export function RadioGroup({
               <label
                 key={opt.value}
                 htmlFor={inputId}
-                className={`relative flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-lg px-2 text-center text-base font-semibold transition-colors active:scale-[0.98] ${
+                className={`relative flex min-h-12 flex-1 cursor-pointer touch-manipulation items-center justify-center rounded-lg px-2 text-center text-base font-semibold transition-colors active:scale-[0.98] ${
                   selected
                     ? "bg-primary text-white shadow-sm"
                     : "bg-transparent text-foreground hover:bg-card"
@@ -85,7 +85,7 @@ export function RadioGroup({
             <label
               key={opt.value}
               htmlFor={inputId}
-              className={`inline-flex min-h-12 cursor-pointer items-center gap-2.5 rounded-lg border px-4 py-3 text-base transition-colors active:bg-primary/15 ${
+              className={`inline-flex min-h-12 cursor-pointer touch-manipulation items-center gap-2.5 rounded-lg border px-4 py-3 text-base transition-colors active:bg-primary/15 ${
                 selected
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-card text-foreground hover:bg-background"

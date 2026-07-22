@@ -24,7 +24,7 @@ export function SwitchField({
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex min-h-14 w-full items-center justify-between gap-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-left transition-colors active:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className="flex min-h-14 w-full touch-manipulation items-center justify-between gap-4 rounded-lg border border-border bg-background/60 px-4 py-3 text-left transition-colors active:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <span className="text-base font-medium text-foreground">{label}</span>
       <span
