@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4f6f8;
+  --foreground: #1a2332;
+  --card: #ffffff;
+  --border: #d8dee6;
+  --muted: #5c6b7a;
+  --primary: #0f4c81;
+  --primary-hover: #0c3d68;
+  --danger: #b42318;
+  --success: #067647;
+  --ring: #0f4c81;
+  --touch-min: 48px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --submit-bar-height: 4.5rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overscroll-behavior-y: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Targets táctiles cómodos en tablet / stylus */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  accent-color: var(--primary);
+}
+
+/* Padding inferior para que el sticky submit no tape campos */
+.pb-submit-safe {
+  padding-bottom: calc(var(--submit-bar-height) + var(--safe-bottom) + 1.5rem);
 }
