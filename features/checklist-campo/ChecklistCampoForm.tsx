@@ -47,7 +47,7 @@ const SESSION_LOCKED_CLASS =
   "bg-background/80 text-muted read-only:cursor-default";
 
 const REGISTRO_FOTOGRAFICO_ALERT =
-  "⚠️ ATENCIÓN: Recuerda tomar todas las fotografías de la inspección directamente con la cámara de tu celular. El registro fotográfico se elaborará manualmente en la oficina.";
+  "⚠️ ATENCIÓN: En cada ítem fotográfico usa “Tomar foto” / “Tomar otra foto”. Cada disparo se guarda solo en el celular. Las fotos no viajan con el checklist; el registro fotográfico se elaborará manualmente en la oficina.";
 
 // TEMPORARIO — quitar tras pruebas E2E
 const DEV_TEST_OBS = "Prueba técnica OK";
@@ -113,8 +113,11 @@ export function ChecklistCampoForm() {
     reset,
     setValue,
     getValues,
+    watch,
     formState: { errors },
   } = form;
+
+  const inspeccionCodigo = watch("codigo");
 
   // TEMPORARIO — quitar tras pruebas E2E
   function autoCompletarPrueba() {
@@ -418,7 +421,7 @@ export function ChecklistCampoForm() {
 
       <SectionCard
         title="Inspección en Campo"
-        description="Evalúe cada ítem como C (Conforme), NC (No Conforme) o N/A. Registre notas de evidencia según el tipo indicado. Las fotos se toman aparte con la cámara del celular."
+        description="Evalúe cada ítem como C (Conforme), NC (No Conforme) o N/A. En ítems fotográficos, dispare varios ángulos: cada foto se guarda sola en el celular. El registro oficial se arma en oficina."
       >
         <div
           role="alert"
@@ -471,6 +474,8 @@ export function ChecklistCampoForm() {
                   <EvidenciaField
                     id={`evidencia-${item.key}`}
                     tipo={item.tipoEvidencia}
+                    itemKey={item.key}
+                    fileNamePrefix={inspeccionCodigo}
                     value={field.value ?? createEmptyEvidencia()}
                     onChange={field.onChange}
                     error={getEvidenciaError(errors, item.key)}
