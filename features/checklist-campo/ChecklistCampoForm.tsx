@@ -49,9 +49,6 @@ const SESSION_LOCKED_CLASS =
 const REGISTRO_FOTOGRAFICO_ALERT =
   "⚠️ ATENCIÓN: En cada ítem fotográfico usa “Tomar foto” / “Tomar otra foto”. Cada disparo se guarda solo en el celular. Las fotos no viajan con el checklist; el registro fotográfico se elaborará manualmente en la oficina.";
 
-// TEMPORARIO — quitar tras pruebas E2E
-const DEV_TEST_OBS = "Prueba técnica OK";
-
 function evidenciaTipoClassName(tipo: EvidenciaTipo) {
   if (tipo === "fotografica") {
     return "border-primary/30 bg-primary/10 text-primary";
@@ -112,46 +109,11 @@ export function ChecklistCampoForm() {
     handleSubmit,
     reset,
     setValue,
-    getValues,
     watch,
     formState: { errors },
   } = form;
 
   const inspeccionCodigo = watch("codigo");
-
-  // TEMPORARIO — quitar tras pruebas E2E
-  function autoCompletarPrueba() {
-    const current = getValues();
-
-    const condiciones_generales = Object.fromEntries(
-      CONDICIONES_GENERALES.map((c) => [
-        c.key,
-        { valor: "si" as const, observaciones: DEV_TEST_OBS },
-      ]),
-    ) as ChecklistCampoFormValues["condiciones_generales"];
-
-    const items = Object.fromEntries(
-      CAMPO_INSPECTION_ITEMS.map((item) => [
-        item.key,
-        {
-          evaluacion: "C" as const,
-          evidencia: {
-            ...createEmptyEvidencia(),
-            notas: DEV_TEST_OBS,
-          },
-        },
-      ]),
-    ) as ChecklistCampoFormValues["items"];
-
-    reset({
-      ...current,
-      condiciones_generales,
-      items,
-      hallazgos: DEV_TEST_OBS,
-      etapa_dos: "CUMPLE",
-      observaciones_tecnicas: DEV_TEST_OBS,
-    });
-  }
 
   const onDraftLoaded = useCallback((values: ChecklistCampoFormValues) => {
     const session = sessionRef.current;
@@ -275,17 +237,6 @@ export function ChecklistCampoForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-submit-safe">
       <FormStatusBanner status={status} message={statusMessage} />
-
-      {/* TEMPORARIO — quitar tras pruebas E2E */}
-      <div>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={autoCompletarPrueba}
-        >
-          🧪 Auto-completar prueba
-        </Button>
-      </div>
 
       <SectionCard
         title="Datos Generales"
