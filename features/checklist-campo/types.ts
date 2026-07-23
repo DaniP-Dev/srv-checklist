@@ -97,7 +97,7 @@ export type EvidenciaValue = z.infer<typeof evidenciaSchema>;
 export type ArchivoAdjunto = z.infer<typeof archivoAdjuntoSchema>;
 
 export function createEmptyEvidencia(): EvidenciaValue {
-  return { notas: "", archivos: [] };
+  return { notas: "", archivos: [] as ArchivoAdjunto[] };
 }
 
 export function createChecklistCampoDefaults(): ChecklistCampoFormValues {
@@ -140,7 +140,10 @@ export function toChecklistCampoPayload(
       key,
       {
         ...item,
-        evidencia: { notas: item.evidencia.notas, archivos: [] },
+        evidencia: {
+          ...createEmptyEvidencia(),
+          notas: item.evidencia.notas,
+        },
       },
     ]),
   ) as ChecklistCampoFormValues["items"];

@@ -133,8 +133,8 @@ export function ChecklistCampoForm() {
         {
           evaluacion: "C" as const,
           evidencia: {
+            ...createEmptyEvidencia(),
             notas: DEV_TEST_OBS,
-            archivos: [],
           },
         },
       ]),

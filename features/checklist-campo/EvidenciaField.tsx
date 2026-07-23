@@ -6,7 +6,10 @@ import {
   EVIDENCIA_PLACEHOLDERS,
   type EvidenciaTipo,
 } from "@/features/checklist-campo/constants";
-import type { EvidenciaValue } from "@/features/checklist-campo/types";
+import {
+  createEmptyEvidencia,
+  type EvidenciaValue,
+} from "@/features/checklist-campo/types";
 
 interface EvidenciaFieldProps {
   id: string;
@@ -40,7 +43,10 @@ export function EvidenciaField({
         placeholder={EVIDENCIA_PLACEHOLDERS[tipo]}
         value={value.notas}
         onChange={(event) =>
-          onChange({ notas: event.target.value, archivos: [] })
+          onChange({
+            ...createEmptyEvidencia(),
+            notas: event.target.value,
+          })
         }
         error={error}
       />
