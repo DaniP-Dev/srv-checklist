@@ -40,7 +40,8 @@ export const EVIDENCIA_TIPO_LABELS: Record<EvidenciaTipo, string> = {
 };
 
 export const EVIDENCIA_PLACEHOLDERS: Record<EvidenciaTipo, string> = {
-  fotografica: "Describa / referencie la evidencia fotográfica…",
+  fotografica:
+    "Describa / referencie lo fotografiado (las fotos se toman con la cámara del celular)…",
   documental: "Referencie documento, certificado o bitácora…",
   directa: "Observaciones de la verificación directa…",
 };

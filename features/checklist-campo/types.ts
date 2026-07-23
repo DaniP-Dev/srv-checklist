@@ -1,17 +1,12 @@
 import { z } from "zod";
-import type {
-  BaseInspectionPayload,
-  EvidenciaFotografica,
-} from "@/lib/types/inspection";
+import type { BaseInspectionPayload } from "@/lib/types/inspection";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import {
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
 } from "@/features/checklist-campo/constants";
-import { REGISTRO_FOTOGRAFICO_ASPECTOS } from "@/features/checklist-campo/registro-fotografico";
 
 export const MAX_ARCHIVOS_POR_ITEM = 3;
-export const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
 const evaluationSchema = z.enum(["C", "NC", "NA"], {
   message: "Seleccione C, NC o N/A",
@@ -30,6 +25,7 @@ const archivoAdjuntoSchema = z.object({
 
 export const evidenciaSchema = z.object({
   notas: z.string(),
+  // Conservado por compatibilidad con borradores IndexedDB antiguos.
   archivos: z
     .array(archivoAdjuntoSchema)
     .max(MAX_ARCHIVOS_POR_ITEM, `Máximo ${MAX_ARCHIVOS_POR_ITEM} archivos`),
@@ -80,24 +76,11 @@ export const checklistCampoSchema = z
       const item = data.items[catalogItem.key];
       if (item.evaluacion === "NA") continue;
 
-      if (catalogItem.tipoEvidencia === "fotografica") {
-        const hasImage = item.evidencia.archivos.some((archivo) =>
-          archivo.mimeType.startsWith("image/"),
-        );
-        if (!hasImage) {
+      if (catalogItem.tipoEvidencia === "documental") {
+        if (item.evidencia.notas.trim().length === 0) {
           ctx.addIssue({
             code: "custom",
-            message: "Adjunte al menos una foto",
-            path: ["items", catalogItem.key, "evidencia"],
-          });
-        }
-      } else if (catalogItem.tipoEvidencia === "documental") {
-        const hasFile = item.evidencia.archivos.length > 0;
-        const hasNotas = item.evidencia.notas.trim().length > 0;
-        if (!hasFile && !hasNotas) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Adjunte un documento o indique la referencia",
+            message: "Indique la referencia documental",
             path: ["items", catalogItem.key, "evidencia"],
           });
         }
@@ -151,54 +134,26 @@ export function createChecklistCampoDefaults(): ChecklistCampoFormValues {
 export function toChecklistCampoPayload(
   values: ChecklistCampoFormValues,
 ): BaseInspectionPayload<ChecklistCampoData> {
+  // No enviar adjuntos Base64 (registro fotográfico es manual; borradores antiguos pueden tenerlos).
+  const items = Object.fromEntries(
+    Object.entries(values.items).map(([key, item]) => [
+      key,
+      {
+        ...item,
+        evidencia: { notas: item.evidencia.notas, archivos: [] },
+      },
+    ]),
+  ) as ChecklistCampoFormValues["items"];
+
+  const sanitized: ChecklistCampoFormValues = { ...values, items };
+
   return {
-    id_inspeccion: values.codigo,
-    fecha: values.fecha
-      ? new Date(values.fecha).toISOString()
+    id_inspeccion: sanitized.codigo,
+    fecha: sanitized.fecha
+      ? new Date(sanitized.fecha).toISOString()
       : new Date().toISOString(),
-    inspector: values.inspector,
+    inspector: sanitized.inspector,
     tipo_formulario: "checklist-campo",
-    data: values,
+    data: sanitized,
   };
-}
-
-/**
- * Construye el array plano del Registro Fotográfico en el orden del
- * documento oficial. Una entrada por archivo de imagen; si no hay
- * imágenes, una entrada con `foto_base64: null`.
- */
-export function buildEvidenciasFotograficas(
-  values: ChecklistCampoFormValues,
-): EvidenciaFotografica[] {
-  const result: EvidenciaFotografica[] = [];
-
-  for (const aspecto of REGISTRO_FOTOGRAFICO_ASPECTOS) {
-    const item = values.items[aspecto.itemKey];
-    const imagenes = item.evidencia.archivos.filter((archivo) =>
-      archivo.mimeType.startsWith("image/"),
-    );
-
-    if (imagenes.length === 0) {
-      result.push({
-        codigo_ref: aspecto.codigo,
-        item_nombre: aspecto.aspecto,
-        evaluacion: item.evaluacion,
-        observacion: item.evidencia.notas,
-        foto_base64: null,
-      });
-      continue;
-    }
-
-    for (const imagen of imagenes) {
-      result.push({
-        codigo_ref: aspecto.codigo,
-        item_nombre: aspecto.aspecto,
-        evaluacion: item.evaluacion,
-        observacion: item.evidencia.notas,
-        foto_base64: imagen.dataUrl,
-      });
-    }
-  }
-
-  return result;
 }

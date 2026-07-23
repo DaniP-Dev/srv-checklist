@@ -36,7 +36,6 @@ import {
 } from "@/features/checklist-campo/constants";
 import { EvidenciaField } from "@/features/checklist-campo/EvidenciaField";
 import {
-  buildEvidenciasFotograficas,
   checklistCampoSchema,
   createChecklistCampoDefaults,
   createEmptyEvidencia,
@@ -47,15 +46,11 @@ import {
 const SESSION_LOCKED_CLASS =
   "bg-background/80 text-muted read-only:cursor-default";
 
+const REGISTRO_FOTOGRAFICO_ALERT =
+  "⚠️ ATENCIÓN: Recuerda tomar todas las fotografías de la inspección directamente con la cámara de tu celular. El registro fotográfico se elaborará manualmente en la oficina.";
+
 // TEMPORARIO — quitar tras pruebas E2E
 const DEV_TEST_OBS = "Prueba técnica OK";
-const DEV_DUMMY_IMAGE_DATA_URL =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-const DEV_DUMMY_ARCHIVO = {
-  name: "dummy-test.png",
-  mimeType: "image/png",
-  dataUrl: DEV_DUMMY_IMAGE_DATA_URL,
-};
 
 function evidenciaTipoClassName(tipo: EvidenciaTipo) {
   if (tipo === "fotografica") {
@@ -139,7 +134,7 @@ export function ChecklistCampoForm() {
           evaluacion: "C" as const,
           evidencia: {
             notas: DEV_TEST_OBS,
-            archivos: [DEV_DUMMY_ARCHIVO],
+            archivos: [],
           },
         },
       ]),
@@ -226,8 +221,7 @@ export function ChecklistCampoForm() {
     }
 
     // Contrato webhook: data.acta.data / data.checklist.data /
-    // data.evidencias_fotograficas[] → Apps Script escribe Sheet A–M
-    // (metadatos+links) y Drive (Docs/fotos). Ver docs/apps-script/.
+    // data.evidencias_fotograficas[] (vacío: registro fotográfico manual).
     const payload: BaseInspectionPayload<UnifiedInspectionData> = {
       id_inspeccion: checklistPayload.id_inspeccion,
       fecha: checklistPayload.fecha,
@@ -236,7 +230,7 @@ export function ChecklistCampoForm() {
       data: {
         acta: session.acta_completa,
         checklist: checklistPayload,
-        evidencias_fotograficas: buildEvidenciasFotograficas(lockedValues),
+        evidencias_fotograficas: [],
       },
     };
 
@@ -424,8 +418,14 @@ export function ChecklistCampoForm() {
 
       <SectionCard
         title="Inspección en Campo"
-        description="Evalúe cada ítem como C (Conforme), NC (No Conforme) o N/A. Capture la evidencia según el tipo indicado."
+        description="Evalúe cada ítem como C (Conforme), NC (No Conforme) o N/A. Registre notas de evidencia según el tipo indicado. Las fotos se toman aparte con la cámara del celular."
       >
+        <div
+          role="alert"
+          className="mb-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4"
+        >
+          {REGISTRO_FOTOGRAFICO_ALERT}
+        </div>
         <div className="hidden border-b border-border pb-2 text-xs font-semibold uppercase tracking-wide text-muted md:grid md:grid-cols-[minmax(0,1.3fr)_minmax(11rem,14rem)_minmax(0,1.4fr)] md:gap-4">
           <span>Ítem</span>
           <span>Evaluación</span>
@@ -521,6 +521,13 @@ export function ChecklistCampoForm() {
           </div>
         </div>
       </SectionCard>
+
+      <div
+        role="alert"
+        className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4"
+      >
+        {REGISTRO_FOTOGRAFICO_ALERT}
+      </div>
 
       <SubmitBar>
         <Button type="submit" disabled={isPending} className="w-full md:w-auto">
