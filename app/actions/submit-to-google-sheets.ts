@@ -4,10 +4,21 @@ import type {
   BaseInspectionPayload,
   SubmitResult,
 } from "@/lib/types/inspection";
+import { isUnifiedInspectionData } from "@/lib/types/inspection";
 
 /**
- * Server Action unificada para enviar cualquier checklist a Google Sheets
- * vía Google Apps Script webhook.
+ * Server Action unificada: POST del payload al webhook de Google Apps Script
+ * (`GOOGLE_SHEETS_WEBHOOK_URL`).
+ *
+ * Contrato (checklist-campo / UnifiedInspectionData):
+ * - Body = JSON completo del envelope (text/plain, compatible con doPost).
+ * - `data.acta.data`, `data.checklist.data`, `data.evidencias_fotograficas[]`
+ *   viajan estructurados; Apps Script los usa para Drive/Docs.
+ * - El Sheet solo debe indexar metadatos + links (A–M). Nunca JSON/base64
+ *   en celdas. Implementación de referencia:
+ *   `docs/apps-script/RegistroInspecciones.gs`.
+ * - Techo Vercel Server Actions ~4mb (`next.config.ts`); este action no
+ *   recorta fotos — la compresión vive en el cliente.
  */
 export async function submitToGoogleSheets(
   payload: BaseInspectionPayload,
@@ -20,6 +31,16 @@ export async function submitToGoogleSheets(
   }
   if (!payload.inspector?.trim()) {
     return { ok: false, error: "inspector es requerido" };
+  }
+
+  if (payload.tipo_formulario === "checklist-campo") {
+    if (!isUnifiedInspectionData(payload.data)) {
+      return {
+        ok: false,
+        error:
+          "Payload checklist-campo incompleto: se requieren data.acta.data, data.checklist.data y data.evidencias_fotograficas[]",
+      };
+    }
   }
 
   const webhookUrl = process.env.GOOGLE_SHEETS_WEBHOOK_URL;

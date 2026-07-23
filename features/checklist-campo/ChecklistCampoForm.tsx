@@ -225,6 +225,9 @@ export function ChecklistCampoForm() {
       return;
     }
 
+    // Contrato webhook: data.acta.data / data.checklist.data /
+    // data.evidencias_fotograficas[] → Apps Script escribe Sheet A–M
+    // (metadatos+links) y Drive (Docs/fotos). Ver docs/apps-script/.
     const payload: BaseInspectionPayload<UnifiedInspectionData> = {
       id_inspeccion: checklistPayload.id_inspeccion,
       fecha: checklistPayload.fecha,
@@ -233,8 +236,6 @@ export function ChecklistCampoForm() {
       data: {
         acta: session.acta_completa,
         checklist: checklistPayload,
-        // Array plano 1:1 con el Word "VERIFICACION FOTOGRAFICA…"
-        // (codigo_ref, item_nombre, evaluacion, observacion, foto_base64).
         evidencias_fotograficas: buildEvidenciasFotograficas(lockedValues),
       },
     };
