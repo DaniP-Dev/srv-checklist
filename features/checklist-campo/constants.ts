@@ -42,7 +42,8 @@ export const EVIDENCIA_TIPO_LABELS: Record<EvidenciaTipo, string> = {
 export const EVIDENCIA_PLACEHOLDERS: Record<EvidenciaTipo, string> = {
   fotografica:
     "Opcional: notas del ángulo o hallazgo (cada disparo ya se guardó en el celular)…",
-  documental: "Referencie documento, certificado o bitácora…",
+  documental:
+    "Opcional: folio, quién entregó o fecha de recepción (el soporte no se sube aquí)…",
   directa: "Observaciones de la verificación directa…",
 };
 

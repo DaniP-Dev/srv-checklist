@@ -70,22 +70,6 @@ export const checklistCampoSchema = z
       message: "Seleccione el resultado de Etapa dos",
     }),
     observaciones_tecnicas: z.string(),
-  })
-  .superRefine((data, ctx) => {
-    for (const catalogItem of CAMPO_INSPECTION_ITEMS) {
-      const item = data.items[catalogItem.key];
-      if (item.evaluacion === "NA") continue;
-
-      if (catalogItem.tipoEvidencia === "documental") {
-        if (item.evidencia.notas.trim().length === 0) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Indique la referencia documental",
-            path: ["items", catalogItem.key, "evidencia"],
-          });
-        }
-      }
-    }
   });
 
 export type ChecklistCampoFormValues = z.infer<typeof checklistCampoSchema>;

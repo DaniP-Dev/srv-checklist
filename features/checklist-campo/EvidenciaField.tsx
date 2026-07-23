@@ -32,7 +32,7 @@ interface EvidenciaFieldProps {
 
 function notesLabel(tipo: EvidenciaTipo) {
   if (tipo === "fotografica") return "Notas de evidencia";
-  if (tipo === "documental") return "Referencia documental";
+  if (tipo === "documental") return "Notas opcionales";
   return "Observaciones";
 }
 
@@ -85,6 +85,24 @@ export function EvidenciaField({
   const [photoCount, setPhotoCount] = useState(0);
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | undefined>();
+
+  if (tipo === "documental") {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted">
+          El soporte documental lo entrega el cliente en físico o por fuera de
+          la app. No se sube en este checklist.
+        </p>
+        <NotesTextarea
+          id={id}
+          tipo={tipo}
+          value={value}
+          onChange={onChange}
+          error={error}
+        />
+      </div>
+    );
+  }
 
   if (tipo !== "fotografica") {
     return (
