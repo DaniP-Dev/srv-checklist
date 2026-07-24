@@ -2,7 +2,9 @@ import { z } from "zod";
 import { IDENTIFICACION } from "@/lib/identificacion";
 
 const CODIGO_FULL_RE = /^SRV-INSP-(\d+)-(\d{4})$/i;
-const NIT_RE = /^\d{8,}(-\d)?$/;
+/** NIT: solo dígitos, guion + DV opcional; máx. 15 caracteres en total. */
+export const NIT_MAX_LENGTH = 15;
+const NIT_RE = /^\d+(-\d)?$/;
 const DIGITS_ONLY_RE = /^\d+$/;
 
 /** Trim + colapsar espacios múltiples a uno solo. */
@@ -31,9 +33,10 @@ export function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** NIT sin espacios ni puntos de miles. */
+/** NIT sin espacios ni puntos de miles; solo dígitos y DV opcional. */
 export function normalizeNit(value: string): string {
-  return value.replace(/[.\s]/g, "").trim();
+  const { body, dv } = splitNit(value);
+  return joinNit(body, dv);
 }
 
 /** Solo dígitos (consecutivo, SICOM, celular). */
@@ -41,20 +44,48 @@ export function digitsOnly(value: string): string {
   return value.replace(/\D/g, "");
 }
 
+/** Separa cuerpo del NIT y dígito verificador opcional. */
+export function splitNit(value: string): { body: string; dv: string } {
+  const cleaned = value.replace(/[.\s]/g, "").trim().replace(/[^\d-]/g, "");
+  const dashIndex = cleaned.indexOf("-");
+  if (dashIndex === -1) {
+    return { body: cleaned.replace(/\D/g, "").slice(0, NIT_MAX_LENGTH), dv: "" };
+  }
+  const body = cleaned.slice(0, dashIndex).replace(/\D/g, "");
+  const dv = cleaned
+    .slice(dashIndex + 1)
+    .replace(/\D/g, "")
+    .slice(0, 1);
+  const bodyMax = NIT_MAX_LENGTH - (dv ? 2 : 1);
+  return { body: body.slice(0, Math.max(bodyMax, 0)), dv };
+}
+
+/** Une cuerpo + DV respetando el máximo de caracteres. */
+export function joinNit(body: string, dv: string): string {
+  const digits = body.replace(/\D/g, "");
+  const check = dv.replace(/\D/g, "").slice(0, 1);
+  if (!check) {
+    return digits.slice(0, NIT_MAX_LENGTH);
+  }
+  const bodyMax = NIT_MAX_LENGTH - 2;
+  return `${digits.slice(0, Math.max(bodyMax, 0))}-${check}`;
+}
+
 /** NIT tipable: dígitos y un guion opcional antes del dígito verificador. */
 export function nitInputFilter(value: string): string {
   const cleaned = value.replace(/[^\d-]/g, "");
   const dashIndex = cleaned.indexOf("-");
   if (dashIndex === -1) {
-    return cleaned.replace(/\D/g, "");
+    return cleaned.replace(/\D/g, "").slice(0, NIT_MAX_LENGTH);
   }
   const body = cleaned.slice(0, dashIndex).replace(/\D/g, "");
   const check = cleaned
     .slice(dashIndex + 1)
     .replace(/\D/g, "")
     .slice(0, 1);
-  // Conservar el "-" mientras se escribe el dígito verificador (ej. "900123456-").
-  return `${body}-${check}`;
+  // Reservar 1 char para "-" o 2 para "-X".
+  const bodyMax = NIT_MAX_LENGTH - (check ? 2 : 1);
+  return `${body.slice(0, Math.max(bodyMax, 0))}-${check}`;
 }
 
 /** Prefijos a eliminar antes de forzar `EDS [NOMBRE]`. */
@@ -137,7 +168,7 @@ export function nitSchema(requiredMessage = IDENTIFICACION.nit.requiredMessage) 
     .string()
     .overwrite(normalizeNit)
     .min(1, requiredMessage)
-    .min(8, "NIT debe tener al menos 8 caracteres")
+    .max(NIT_MAX_LENGTH, `NIT no puede superar ${NIT_MAX_LENGTH} caracteres`)
     .regex(NIT_RE, "NIT inválido (solo números y dígito verificador opcional)");
 }
 

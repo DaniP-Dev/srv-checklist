@@ -8,6 +8,7 @@ import {
   SignaturePad,
   type SignaturePadHandle,
 } from "@/components/forms/signature-pad";
+import { NitInput } from "@/components/forms/nit-input";
 import { SubmitBar } from "@/components/forms/submit-bar";
 import { Button } from "@/components/ui/button";
 import { CheckboxGroup } from "@/components/ui/checkbox-group";
@@ -23,7 +24,6 @@ import { useFormDraft } from "@/hooks/use-form-draft";
 import {
   digitsOnly,
   formatCodigoInspeccion,
-  nitInputFilter,
   normalizeEstablecimiento,
   TEXTO_PREDETERMINADO,
 } from "@/lib/form-normalization";
@@ -281,17 +281,19 @@ export function ActaInspeccionTecnicaForm() {
             <Label htmlFor={IDENTIFICACION.nit.key} required>
               {IDENTIFICACION.nit.label}
             </Label>
-            <Input
-              id={IDENTIFICACION.nit.key}
-              inputMode="text"
-              autoComplete="off"
-              placeholder="Ej. 900123456-1"
-              error={errors.nit?.message}
-              {...register("nit", {
-                onChange: (event) => {
-                  event.target.value = nitInputFilter(event.target.value);
-                },
-              })}
+            <Controller
+              name="nit"
+              control={control}
+              render={({ field }) => (
+                <NitInput
+                  id={IDENTIFICACION.nit.key}
+                  name={field.name}
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={field.onChange}
+                  error={errors.nit?.message}
+                />
+              )}
             />
           </div>
           <div>
