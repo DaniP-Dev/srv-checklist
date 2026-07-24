@@ -42,6 +42,7 @@ import {
   toChecklistCampoPayload,
   type ChecklistCampoFormValues,
 } from "@/features/checklist-campo/types";
+import { TEXTO_PREDETERMINADO } from "@/lib/form-normalization";
 
 const SESSION_LOCKED_CLASS =
   "bg-background/80 text-muted read-only:cursor-default";
@@ -143,7 +144,11 @@ export function ChecklistCampoForm() {
         const session = await loadSession();
         if (cancelled) return;
 
-        if (!session || session.tipoInspeccion !== "EDS") {
+        if (
+          !session ||
+          (session.tipoInspeccion !== "IEDS" &&
+            session.tipoInspeccion !== "EDS")
+        ) {
           router.replace("/");
           return;
         }
@@ -251,7 +256,7 @@ export function ChecklistCampoForm() {
               id={IDENTIFICACION.codigo.key}
               error={errors.codigo?.message}
               readOnly
-              className={SESSION_LOCKED_CLASS}
+              className={`${SESSION_LOCKED_CLASS} uppercase`}
               {...register("codigo")}
             />
           </div>
@@ -274,7 +279,7 @@ export function ChecklistCampoForm() {
               id="inspector"
               error={errors.inspector?.message}
               readOnly
-              className={SESSION_LOCKED_CLASS}
+              className={`${SESSION_LOCKED_CLASS} uppercase`}
               {...register("inspector")}
             />
           </div>
@@ -286,7 +291,7 @@ export function ChecklistCampoForm() {
               id={IDENTIFICACION.razon_social.key}
               error={errors.razon_social?.message}
               readOnly
-              className={SESSION_LOCKED_CLASS}
+              className={`${SESSION_LOCKED_CLASS} uppercase`}
               {...register("razon_social")}
             />
           </div>
@@ -310,7 +315,7 @@ export function ChecklistCampoForm() {
               id={IDENTIFICACION.establecimiento.key}
               error={errors.establecimiento?.message}
               readOnly
-              className={SESSION_LOCKED_CLASS}
+              className={`${SESSION_LOCKED_CLASS} uppercase`}
               {...register("establecimiento")}
             />
           </div>
@@ -322,7 +327,7 @@ export function ChecklistCampoForm() {
               id={IDENTIFICACION.direccion.key}
               error={errors.direccion?.message}
               readOnly
-              className={SESSION_LOCKED_CLASS}
+              className={`${SESSION_LOCKED_CLASS} uppercase`}
               {...register("direccion")}
             />
           </div>
@@ -359,7 +364,8 @@ export function ChecklistCampoForm() {
                 <Label htmlFor={`obs-${item.key}`}>Observaciones</Label>
                 <Input
                   id={`obs-${item.key}`}
-                  placeholder="Opcional"
+                  className="uppercase"
+                  placeholder={TEXTO_PREDETERMINADO}
                   {...register(
                     `condiciones_generales.${item.key}.observaciones`,
                   )}
@@ -444,6 +450,8 @@ export function ChecklistCampoForm() {
             <Label htmlFor="hallazgos">Hallazgos</Label>
             <Textarea
               id="hallazgos"
+              className="uppercase"
+              placeholder={TEXTO_PREDETERMINADO}
               rows={4}
               {...register("hallazgos")}
             />
@@ -471,6 +479,8 @@ export function ChecklistCampoForm() {
             </Label>
             <Textarea
               id="observaciones_tecnicas"
+              className="uppercase"
+              placeholder={TEXTO_PREDETERMINADO}
               rows={4}
               {...register("observaciones_tecnicas")}
             />

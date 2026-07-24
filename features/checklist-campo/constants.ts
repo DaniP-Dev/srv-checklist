@@ -40,11 +40,9 @@ export const EVIDENCIA_TIPO_LABELS: Record<EvidenciaTipo, string> = {
 };
 
 export const EVIDENCIA_PLACEHOLDERS: Record<EvidenciaTipo, string> = {
-  fotografica:
-    "Opcional: notas del ángulo o hallazgo (cada disparo ya se guardó en el celular)…",
-  documental:
-    "Opcional: folio, quién entregó o fecha de recepción (el soporte no se sube aquí)…",
-  directa: "Observaciones de la verificación directa…",
+  fotografica: "SIN OBSERVACIONES",
+  documental: "SIN OBSERVACIONES",
+  directa: "SIN OBSERVACIONES",
 };
 
 export const CAMPO_INSPECTION_ITEMS = [

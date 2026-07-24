@@ -16,8 +16,11 @@ function edsLockReason(session: InspectionSession | null): string | null {
   if (!session) {
     return "Complete el acta de inspección y continúe al checklist para desbloquear.";
   }
-  if (session.tipoInspeccion !== "EDS") {
-    return `El acta actual es de ${session.tipoInspeccion}. El checklist EDS no está disponible.`;
+  if (
+    session.tipoInspeccion !== "IEDS" &&
+    session.tipoInspeccion !== "EDS"
+  ) {
+    return `El acta actual es de ${session.tipoInspeccion}. El checklist IEDS no está disponible.`;
   }
   return null;
 }

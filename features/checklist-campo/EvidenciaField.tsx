@@ -56,6 +56,7 @@ function NotesTextarea({
       </Label>
       <Textarea
         id={id}
+        className="uppercase"
         rows={tipo === "directa" ? 3 : 2}
         placeholder={EVIDENCIA_PLACEHOLDERS[tipo]}
         value={value.notas}

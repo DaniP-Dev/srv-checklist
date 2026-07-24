@@ -2,6 +2,18 @@ import { z } from "zod";
 import type { BaseInspectionPayload } from "@/lib/types/inspection";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import {
+  codigoInspeccionSchema,
+  establecimientoSchema,
+  formatCodigoInspeccion,
+  nitSchema,
+  normalizeEstablecimiento,
+  normalizeNit,
+  normalizeUpperText,
+  normalizeUpperTextOrDefault,
+  upperTextOptional,
+  upperTextRequired,
+} from "@/lib/form-normalization";
+import {
   CAMPO_INSPECTION_ITEMS,
   CONDICIONES_GENERALES,
 } from "@/features/checklist-campo/constants";
@@ -14,7 +26,7 @@ const evaluationSchema = z.enum(["C", "NC", "NA"], {
 
 const condicionItemSchema = z.object({
   valor: z.enum(["si", "no"], { message: "Seleccione Sí o No" }),
-  observaciones: z.string(),
+  observaciones: upperTextOptional,
 });
 
 const archivoAdjuntoSchema = z.object({
@@ -24,7 +36,7 @@ const archivoAdjuntoSchema = z.object({
 });
 
 export const evidenciaSchema = z.object({
-  notas: z.string(),
+  notas: upperTextOptional,
   // Conservado por compatibilidad con borradores IndexedDB antiguos.
   archivos: z
     .array(archivoAdjuntoSchema)
@@ -50,27 +62,22 @@ const itemsShape = Object.fromEntries(
   typeof campoItemSchema
 >;
 
-export const checklistCampoSchema = z
-  .object({
-    codigo: z.string().min(1, IDENTIFICACION.codigo.requiredMessage),
-    fecha: z.string().min(1, "Fecha requerida"),
-    inspector: z.string().min(1, "Inspector requerido"),
-    razon_social: z
-      .string()
-      .min(1, IDENTIFICACION.razon_social.requiredMessage),
-    nit: z.string().min(1, IDENTIFICACION.nit.requiredMessage),
-    establecimiento: z
-      .string()
-      .min(1, IDENTIFICACION.establecimiento.requiredMessage),
-    direccion: z.string().min(1, IDENTIFICACION.direccion.requiredMessage),
-    condiciones_generales: z.object(condicionesShape),
-    items: z.object(itemsShape),
-    hallazgos: z.string(),
-    etapa_dos: z.enum(["CUMPLE", "NO_CUMPLE"], {
-      message: "Seleccione el resultado de Etapa dos",
-    }),
-    observaciones_tecnicas: z.string(),
-  });
+export const checklistCampoSchema = z.object({
+  codigo: codigoInspeccionSchema(),
+  fecha: z.string().min(1, "Fecha requerida"),
+  inspector: upperTextRequired("Inspector requerido"),
+  razon_social: upperTextRequired(IDENTIFICACION.razon_social.requiredMessage),
+  nit: nitSchema(),
+  establecimiento: establecimientoSchema(),
+  direccion: upperTextRequired(IDENTIFICACION.direccion.requiredMessage),
+  condiciones_generales: z.object(condicionesShape),
+  items: z.object(itemsShape),
+  hallazgos: upperTextOptional,
+  etapa_dos: z.enum(["CUMPLE", "NO_CUMPLE"], {
+    message: "Seleccione el resultado de Etapa dos",
+  }),
+  observaciones_tecnicas: upperTextOptional,
+});
 
 export type ChecklistCampoFormValues = z.infer<typeof checklistCampoSchema>;
 
@@ -126,13 +133,37 @@ export function toChecklistCampoPayload(
         ...item,
         evidencia: {
           ...createEmptyEvidencia(),
-          notas: item.evidencia.notas,
+          notas: normalizeUpperTextOrDefault(item.evidencia.notas),
         },
       },
     ]),
   ) as ChecklistCampoFormValues["items"];
 
-  const sanitized: ChecklistCampoFormValues = { ...values, items };
+  const condiciones_generales = Object.fromEntries(
+    Object.entries(values.condiciones_generales).map(([key, item]) => [
+      key,
+      {
+        ...item,
+        observaciones: normalizeUpperTextOrDefault(item.observaciones),
+      },
+    ]),
+  ) as ChecklistCampoFormValues["condiciones_generales"];
+
+  const sanitized: ChecklistCampoFormValues = {
+    ...values,
+    codigo: formatCodigoInspeccion(values.codigo),
+    inspector: normalizeUpperText(values.inspector),
+    razon_social: normalizeUpperText(values.razon_social),
+    nit: normalizeNit(values.nit),
+    establecimiento: normalizeEstablecimiento(values.establecimiento),
+    direccion: normalizeUpperText(values.direccion),
+    condiciones_generales,
+    hallazgos: normalizeUpperTextOrDefault(values.hallazgos),
+    observaciones_tecnicas: normalizeUpperTextOrDefault(
+      values.observaciones_tecnicas,
+    ),
+    items,
+  };
 
   return {
     id_inspeccion: sanitized.codigo,

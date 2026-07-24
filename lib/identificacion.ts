@@ -2,8 +2,8 @@
 export const IDENTIFICACION = {
   codigo: {
     key: "codigo",
-    label: "Código de inspección",
-    requiredMessage: "Código de inspección requerido",
+    label: "Consecutivo de inspección",
+    requiredMessage: "Consecutivo de inspección requerido",
   },
   razon_social: {
     key: "razon_social",

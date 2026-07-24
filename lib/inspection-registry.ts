@@ -1,4 +1,5 @@
 import type { InspectionFormType } from "@/lib/types/inspection";
+import type { TipoInspeccion } from "@/features/acta-tecnica/constants";
 
 export interface InspectionMeta {
   slug: InspectionFormType;
@@ -15,7 +16,7 @@ export const INSPECTION_REGISTRY: Record<InspectionFormType, InspectionMeta> = {
   },
   "checklist-campo": {
     slug: "checklist-campo",
-    label: "Checklist EDS",
+    label: "Checklist IEDS",
     description:
       "Inspección detallada de instalaciones EDS con evaluación C / NC / N/A.",
   },
@@ -26,17 +27,31 @@ export interface ChecklistPlaceholderMeta {
   id: string;
   label: string;
   description: string;
-  tipoInspeccion: "Hermeticidad";
+  tipoInspeccion: Exclude<TipoInspeccion, "IEDS">;
   comingSoon: true;
 }
 
 export const CHECKLIST_PLACEHOLDERS: ChecklistPlaceholderMeta[] = [
   {
-    id: "checklist-hermeticidad",
-    label: "Checklist Hermeticidad",
+    id: "checklist-ieds-flvl",
+    label: "Checklist IEDS FLVL",
     description:
-      "Checklist de campo para pruebas de hermeticidad. Próximamente.",
-    tipoInspeccion: "Hermeticidad",
+      "Checklist de campo para inspecciones IEDS FLVL. Próximamente.",
+    tipoInspeccion: "IEDS FLVL",
+    comingSoon: true,
+  },
+  {
+    id: "checklist-pht",
+    label: "Checklist PHT",
+    description: "Checklist de campo para inspecciones PHT. Próximamente.",
+    tipoInspeccion: "PHT",
+    comingSoon: true,
+  },
+  {
+    id: "checklist-phl",
+    label: "Checklist PHL",
+    description: "Checklist de campo para inspecciones PHL. Próximamente.",
+    tipoInspeccion: "PHL",
     comingSoon: true,
   },
 ];

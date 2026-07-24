@@ -19,7 +19,14 @@ export interface DraftRecord {
   values: unknown;
 }
 
-export type TipoInspeccionSesion = "EDS" | "Hermeticidad";
+export type TipoInspeccionSesion =
+  | "IEDS"
+  | "IEDS FLVL"
+  | "PHT"
+  | "PHL"
+  /** Compatibilidad con sesiones IndexedDB antiguas. */
+  | "EDS"
+  | "Hermeticidad";
 
 export interface InspectionSession {
   id: "current";

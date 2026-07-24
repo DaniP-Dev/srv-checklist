@@ -20,6 +20,11 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmSessionModal } from "@/features/acta-tecnica/ConfirmSessionModal";
 import { useFormDraft } from "@/hooks/use-form-draft";
+import {
+  formatCodigoInspeccion,
+  normalizeEstablecimiento,
+  TEXTO_PREDETERMINADO,
+} from "@/lib/form-normalization";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import {
   saveSession,
@@ -39,6 +44,7 @@ import {
 import {
   actaTecnicaSchema,
   createActaTecnicaDefaults,
+  normalizeActaTecnicaValues,
   toActaTecnicaPayload,
   type ActaTecnicaFormValues,
 } from "@/features/acta-tecnica/types";
@@ -55,17 +61,18 @@ const SESSION_FIELDS = [
 ] as const satisfies readonly (keyof ActaTecnicaFormValues)[];
 
 function toSessionInput(values: ActaTecnicaFormValues): InspectionSessionInput {
+  const normalized = normalizeActaTecnicaValues(values);
   return {
-    codigo: values.codigo.trim(),
-    tipoInspeccion: values.tipo_inspeccion,
-    razon_social: values.razon_social.trim(),
-    nit: values.nit.trim(),
-    codigo_sicom: values.codigo_sicom.trim(),
-    establecimiento: values.establecimiento.trim(),
-    direccion: values.direccion.trim(),
-    inspector_nombre: values.inspector_nombre.trim(),
-    inspector_celular: values.inspector_celular.trim() || undefined,
-    inspector_correo: values.inspector_correo.trim() || undefined,
+    codigo: normalized.codigo,
+    tipoInspeccion: normalized.tipo_inspeccion,
+    razon_social: normalized.razon_social,
+    nit: normalized.nit,
+    codigo_sicom: normalized.codigo_sicom,
+    establecimiento: normalized.establecimiento,
+    direccion: normalized.direccion,
+    inspector_nombre: normalized.inspector_nombre,
+    inspector_celular: normalized.inspector_celular || undefined,
+    inspector_correo: normalized.inspector_correo || undefined,
   };
 }
 
@@ -116,6 +123,19 @@ export function ActaInspeccionTecnicaForm() {
   });
   const muestraRiesgoOtro = riesgosIdentificados?.includes("otro") ?? false;
 
+  const codigoRaw = useWatch({ control, name: "codigo" });
+  const codigoTrimmed = codigoRaw?.trim() ?? "";
+  const codigoPreview =
+    codigoTrimmed &&
+    (/\d/.test(codigoTrimmed) || /^SRV-INSP-/i.test(codigoTrimmed))
+      ? formatCodigoInspeccion(codigoTrimmed)
+      : null;
+
+  const establecimientoRaw = useWatch({ control, name: "establecimiento" });
+  const establecimientoPreview = establecimientoRaw?.trim()
+    ? normalizeEstablecimiento(establecimientoRaw)
+    : null;
+
   function buildSessionInput(): InspectionSessionInput {
     const values = getValues();
     const firma =
@@ -153,14 +173,17 @@ export function ActaInspeccionTecnicaForm() {
       await saveSession(sessionInput);
       setModalOpen(false);
 
-      if (sessionInput.tipoInspeccion === "EDS") {
+      if (
+        sessionInput.tipoInspeccion === "IEDS" ||
+        sessionInput.tipoInspeccion === "EDS"
+      ) {
         router.push("/inspeccion/checklist-campo");
         return;
       }
 
       setStatus("success");
       setStatusMessage(
-        "Sesión de Hermeticidad guardada. El checklist correspondiente estará disponible próximamente.",
+        `Sesión de ${sessionInput.tipoInspeccion} guardada. El checklist correspondiente estará disponible próximamente.`,
       );
       router.push("/");
     } catch {
@@ -182,7 +205,7 @@ export function ActaInspeccionTecnicaForm() {
 
       <SectionCard
         title="Información General"
-        description="Datos del establecimiento y del código de inspección."
+        description="Datos del establecimiento y del consecutivo de inspección."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -191,9 +214,20 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.codigo.key}
+              inputMode="numeric"
+              placeholder="Ej. 37"
               error={errors.codigo?.message}
               {...register("codigo")}
             />
+            <p className="mt-2 text-xs text-muted">Se guardará como</p>
+            <p
+              className={`mt-0.5 font-mono text-lg font-bold tracking-wider ${
+                codigoPreview ? "text-primary" : "text-muted"
+              }`}
+              aria-live="polite"
+            >
+              {codigoPreview ?? "SRV-INSP-XXXX-AAAA"}
+            </p>
           </div>
           <div>
             <Label htmlFor="tipo_inspeccion" required>
@@ -212,6 +246,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.razon_social.key}
+              className="uppercase"
               error={errors.razon_social?.message}
               {...register("razon_social")}
             />
@@ -232,6 +267,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.codigo_sicom.key}
+              className="uppercase"
               error={errors.codigo_sicom?.message}
               {...register("codigo_sicom")}
             />
@@ -242,9 +278,20 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.establecimiento.key}
+              className="uppercase"
+              placeholder="Ej. LOS ROBLES"
               error={errors.establecimiento?.message}
               {...register("establecimiento")}
             />
+            <p className="mt-2 text-xs text-muted">Se guardará como</p>
+            <p
+              className={`mt-0.5 font-mono text-lg font-bold tracking-wider ${
+                establecimientoPreview ? "text-primary" : "text-muted"
+              }`}
+              aria-live="polite"
+            >
+              {establecimientoPreview || "EDS [NOMBRE]"}
+            </p>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor={IDENTIFICACION.direccion.key} required>
@@ -252,6 +299,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.direccion.key}
+              className="uppercase"
               error={errors.direccion?.message}
               {...register("direccion")}
             />
@@ -267,6 +315,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id="inspector_nombre"
+              className="uppercase"
               error={errors.inspector_nombre?.message}
               {...register("inspector_nombre")}
             />
@@ -289,6 +338,7 @@ export function ActaInspeccionTecnicaForm() {
             <Input
               id="inspector_correo"
               type="email"
+              className="lowercase"
               error={errors.inspector_correo?.message}
               {...register("inspector_correo")}
             />
@@ -328,6 +378,7 @@ export function ActaInspeccionTecnicaForm() {
                   </Label>
                   <Input
                     id={`personas.${index}.nombre`}
+                    className="uppercase"
                     error={errors.personas?.[index]?.nombre?.message}
                     {...register(`personas.${index}.nombre`)}
                   />
@@ -338,6 +389,7 @@ export function ActaInspeccionTecnicaForm() {
                   </Label>
                   <Input
                     id={`personas.${index}.cargo`}
+                    className="uppercase"
                     error={errors.personas?.[index]?.cargo?.message}
                     {...register(`personas.${index}.cargo`)}
                   />
@@ -435,7 +487,8 @@ export function ActaInspeccionTecnicaForm() {
                 </Label>
                 <Input
                   id={`condicion-obs-${item.key}`}
-                  placeholder="Opcional"
+                  className="uppercase"
+                  placeholder={TEXTO_PREDETERMINADO}
                   {...register(`condiciones.${item.key}.observaciones`)}
                 />
               </div>
@@ -500,6 +553,7 @@ export function ActaInspeccionTecnicaForm() {
                 </Label>
                 <Input
                   id="riesgo_otro"
+                  className="uppercase"
                   error={errors.riesgo_otro?.message}
                   {...register("riesgo_otro")}
                 />
@@ -508,11 +562,21 @@ export function ActaInspeccionTecnicaForm() {
           </div>
           <div>
             <Label htmlFor="actividades">Actividades realizadas</Label>
-            <Textarea id="actividades" {...register("actividades")} />
+            <Textarea
+              id="actividades"
+              className="uppercase"
+              placeholder={TEXTO_PREDETERMINADO}
+              {...register("actividades")}
+            />
           </div>
           <div>
             <Label htmlFor="equipos">Equipos/herramientas utilizadas</Label>
-            <Textarea id="equipos" {...register("equipos")} />
+            <Textarea
+              id="equipos"
+              className="uppercase"
+              placeholder={TEXTO_PREDETERMINADO}
+              {...register("equipos")}
+            />
           </div>
           <div>
             <Label htmlFor="medidas_preventivas">
@@ -520,6 +584,8 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Textarea
               id="medidas_preventivas"
+              className="uppercase"
+              placeholder={TEXTO_PREDETERMINADO}
               {...register("medidas_preventivas")}
             />
           </div>
@@ -529,6 +595,8 @@ export function ActaInspeccionTecnicaForm() {
       <SectionCard title="Observaciones Adicionales">
         <Textarea
           id="observaciones_adicionales"
+          className="uppercase"
+          placeholder={TEXTO_PREDETERMINADO}
           rows={4}
           {...register("observaciones_adicionales")}
         />
@@ -570,6 +638,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id="firma_cliente_nombre"
+              className="uppercase"
               error={errors.firma_cliente_nombre?.message}
               {...register("firma_cliente_nombre")}
             />
@@ -580,6 +649,7 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id="firma_cliente_cargo"
+              className="uppercase"
               error={errors.firma_cliente_cargo?.message}
               {...register("firma_cliente_cargo")}
             />

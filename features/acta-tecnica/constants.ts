@@ -1,7 +1,21 @@
-export const TIPO_INSPECCION_OPTIONS = [
-  { value: "EDS", label: "EDS" },
-  { value: "Hermeticidad", label: "Hermeticidad" },
+export const TIPO_INSPECCION_VALUES = [
+  "IEDS",
+  "IEDS FLVL",
+  "PHT",
+  "PHL",
 ] as const;
+
+export type TipoInspeccion = (typeof TIPO_INSPECCION_VALUES)[number];
+
+/** Solo IEDS está habilitada; el resto son próximas implementaciones. */
+export const TIPO_INSPECCION_OPTIONS = [
+  { value: "IEDS", label: "IEDS", disabled: false },
+  { value: "IEDS FLVL", label: "IEDS FLVL (próximamente)", disabled: true },
+  { value: "PHT", label: "PHT (próximamente)", disabled: true },
+  { value: "PHL", label: "PHL (próximamente)", disabled: true },
+] as const;
+
+export const TIPO_INSPECCION_ACTIVA = "IEDS" as const satisfies TipoInspeccion;
 
 export const CONDICIONES_SITIO = [
   {
