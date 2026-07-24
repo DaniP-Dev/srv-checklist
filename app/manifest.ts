@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "SRV Checklist",
-    short_name: "SRV",
+    short_name: "SRV Checklist",
     description:
       "Sistema de formularios de inspección técnica y checklists de campo.",
     start_url: "/",
