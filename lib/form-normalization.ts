@@ -3,6 +3,7 @@ import { IDENTIFICACION } from "@/lib/identificacion";
 
 const CODIGO_FULL_RE = /^SRV-INSP-(\d+)-(\d{4})$/i;
 const NIT_RE = /^\d{8,}(-\d)?$/;
+const DIGITS_ONLY_RE = /^\d+$/;
 
 /** Trim + colapsar espacios múltiples a uno solo. */
 export function collapseSpaces(value: string): string {
@@ -35,6 +36,21 @@ export function normalizeNit(value: string): string {
   return value.replace(/[.\s]/g, "").trim();
 }
 
+/** Solo dígitos (consecutivo, SICOM, celular). */
+export function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** NIT tipable: dígitos y un guion opcional antes del dígito verificador. */
+export function nitInputFilter(value: string): string {
+  const cleaned = value.replace(/[^\d-]/g, "");
+  const parts = cleaned.split("-");
+  if (parts.length === 1) return parts[0];
+  const body = parts[0].replace(/\D/g, "");
+  const check = parts.slice(1).join("").replace(/\D/g, "").slice(0, 1);
+  return check ? `${body}-${check}` : body;
+}
+
 /** Prefijos a eliminar antes de forzar `EDS [NOMBRE]`. */
 const ESTABLECIMIENTO_PREFIX_RE =
   /^(ESTACI[OÓ]N\s+DE\s+SERVICIO|E\.?\s*S\.?|EDS)(\s+|$)/i;
@@ -54,7 +70,7 @@ export function normalizeEstablecimiento(raw: string): string {
 
 /**
  * Consecutivo → `SRV-INSP-XXXX-AAAA` (idempotente).
- * Acepta "37", "0037" o un código ya formateado.
+ * Acepta solo dígitos ("37", "0037") o un código ya formateado.
  */
 export function formatCodigoInspeccion(raw: string): string {
   const trimmed = raw.trim();
@@ -65,18 +81,17 @@ export function formatCodigoInspeccion(raw: string): string {
     return `SRV-INSP-${consecutivo}-${year}`;
   }
 
-  const digits = trimmed.replace(/\D/g, "");
-  if (!digits) {
+  if (!DIGITS_ONLY_RE.test(trimmed)) {
     return trimmed;
   }
 
-  return `SRV-INSP-${digits.padStart(4, "0")}-${new Date().getFullYear()}`;
+  return `SRV-INSP-${trimmed.padStart(4, "0")}-${new Date().getFullYear()}`;
 }
 
-function hasCodigoDigits(value: string): boolean {
+function isValidCodigoInput(value: string): boolean {
   const trimmed = value.trim();
   if (CODIGO_FULL_RE.test(trimmed)) return true;
-  return /\d/.test(trimmed);
+  return DIGITS_ONLY_RE.test(trimmed);
 }
 
 export function upperTextRequired(message: string) {
@@ -117,7 +132,25 @@ export function nitSchema(requiredMessage = IDENTIFICACION.nit.requiredMessage) 
     .overwrite(normalizeNit)
     .min(1, requiredMessage)
     .min(8, "NIT debe tener al menos 8 caracteres")
-    .regex(NIT_RE, "NIT inválido");
+    .regex(NIT_RE, "NIT inválido (solo números y dígito verificador opcional)");
+}
+
+export function codigoSicomSchema(
+  requiredMessage = IDENTIFICACION.codigo_sicom.requiredMessage,
+) {
+  return z
+    .string()
+    .overwrite(digitsOnly)
+    .min(1, requiredMessage)
+    .regex(DIGITS_ONLY_RE, "Código SICOM debe contener solo números");
+}
+
+export function celularSchema(requiredMessage = "Celular requerido") {
+  return z
+    .string()
+    .overwrite(digitsOnly)
+    .min(1, requiredMessage)
+    .regex(/^\d{10}$/, "Celular debe tener 10 dígitos");
 }
 
 export function codigoInspeccionSchema(
@@ -127,8 +160,8 @@ export function codigoInspeccionSchema(
     .string()
     .trim()
     .min(1, requiredMessage)
-    .refine(hasCodigoDigits, {
-      message: "Ingrese el número consecutivo de la inspección",
+    .refine(isValidCodigoInput, {
+      message: "Ingrese solo el número consecutivo (ej. 37)",
     })
     .overwrite(formatCodigoInspeccion);
 }

@@ -6,8 +6,8 @@ import {
   CHECKLIST_PLACEHOLDERS,
   INSPECTION_REGISTRY,
 } from "@/lib/inspection-registry";
+import { resetInspectionState } from "@/lib/offline/reset-inspection";
 import {
-  clearSession,
   loadSession,
   type InspectionSession,
 } from "@/lib/offline/session";
@@ -53,7 +53,7 @@ export function HomeInspectionCards() {
   async function handleCancelSession() {
     setCancelling(true);
     try {
-      await clearSession();
+      await resetInspectionState();
       setSession(null);
     } finally {
       setCancelling(false);

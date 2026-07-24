@@ -21,11 +21,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConfirmSessionModal } from "@/features/acta-tecnica/ConfirmSessionModal";
 import { useFormDraft } from "@/hooks/use-form-draft";
 import {
+  digitsOnly,
   formatCodigoInspeccion,
+  nitInputFilter,
   normalizeEstablecimiento,
   TEXTO_PREDETERMINADO,
 } from "@/lib/form-normalization";
 import { IDENTIFICACION } from "@/lib/identificacion";
+import {
+  loadInspectorProfile,
+  saveInspectorProfile,
+} from "@/lib/offline/inspector-profile";
 import {
   saveSession,
   type InspectionSessionInput,
@@ -58,6 +64,8 @@ const SESSION_FIELDS = [
   "establecimiento",
   "direccion",
   "inspector_nombre",
+  "inspector_celular",
+  "inspector_correo",
 ] as const satisfies readonly (keyof ActaTecnicaFormValues)[];
 
 function toSessionInput(values: ActaTecnicaFormValues): InspectionSessionInput {
@@ -95,6 +103,7 @@ export function ActaInspeccionTecnicaForm() {
     register,
     control,
     getValues,
+    reset,
     trigger,
     formState: { errors },
   } = form;
@@ -108,8 +117,16 @@ export function ActaInspeccionTecnicaForm() {
     }
   }, []);
 
+  const onDraftMissing = useCallback(() => {
+    const profile = loadInspectorProfile();
+    if (profile) {
+      reset(createActaTecnicaDefaults(profile));
+    }
+  }, [reset]);
+
   useFormDraft("acta-tecnica", form, {
     onDraftLoaded,
+    onDraftMissing,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -127,7 +144,7 @@ export function ActaInspeccionTecnicaForm() {
   const codigoTrimmed = codigoRaw?.trim() ?? "";
   const codigoPreview =
     codigoTrimmed &&
-    (/\d/.test(codigoTrimmed) || /^SRV-INSP-/i.test(codigoTrimmed))
+    (/^\d+$/.test(codigoTrimmed) || /^SRV-INSP-\d+-\d{4}$/i.test(codigoTrimmed))
       ? formatCodigoInspeccion(codigoTrimmed)
       : null;
 
@@ -170,6 +187,11 @@ export function ActaInspeccionTecnicaForm() {
     setConfirmingSession(true);
     try {
       const sessionInput = buildSessionInput();
+      saveInspectorProfile({
+        inspector_nombre: sessionInput.inspector_nombre,
+        inspector_celular: sessionInput.inspector_celular ?? "",
+        inspector_correo: sessionInput.inspector_correo ?? "",
+      });
       await saveSession(sessionInput);
       setModalOpen(false);
 
@@ -217,7 +239,11 @@ export function ActaInspeccionTecnicaForm() {
               inputMode="numeric"
               placeholder="Ej. 37"
               error={errors.codigo?.message}
-              {...register("codigo")}
+              {...register("codigo", {
+                onChange: (event) => {
+                  event.target.value = digitsOnly(event.target.value);
+                },
+              })}
             />
             <p className="mt-2 text-xs text-muted">Se guardará como</p>
             <p
@@ -257,8 +283,14 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.nit.key}
+              inputMode="numeric"
+              placeholder="Ej. 900123456-1"
               error={errors.nit?.message}
-              {...register("nit")}
+              {...register("nit", {
+                onChange: (event) => {
+                  event.target.value = nitInputFilter(event.target.value);
+                },
+              })}
             />
           </div>
           <div>
@@ -267,9 +299,14 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.codigo_sicom.key}
-              className="uppercase"
+              inputMode="numeric"
+              placeholder="Solo números"
               error={errors.codigo_sicom?.message}
-              {...register("codigo_sicom")}
+              {...register("codigo_sicom", {
+                onChange: (event) => {
+                  event.target.value = digitsOnly(event.target.value);
+                },
+              })}
             />
           </div>
           <div>
@@ -327,8 +364,18 @@ export function ActaInspeccionTecnicaForm() {
             <Input
               id="inspector_celular"
               type="tel"
+              inputMode="numeric"
+              placeholder="10 dígitos"
+              maxLength={10}
               error={errors.inspector_celular?.message}
-              {...register("inspector_celular")}
+              {...register("inspector_celular", {
+                onChange: (event) => {
+                  event.target.value = digitsOnly(event.target.value).slice(
+                    0,
+                    10,
+                  );
+                },
+              })}
             />
           </div>
           <div>

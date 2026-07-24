@@ -17,8 +17,8 @@ import { useFormDraft } from "@/hooks/use-form-draft";
 import { useOutboxSync } from "@/hooks/use-outbox-sync";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import { submitInspection } from "@/lib/offline/submit-inspection";
+import { resetInspectionState } from "@/lib/offline/reset-inspection";
 import {
-  clearSession,
   loadSession,
   type InspectionSession,
 } from "@/lib/offline/session";
@@ -223,10 +223,10 @@ export function ChecklistCampoForm() {
         setStatusMessage("Checklist enviado correctamente.");
       }
 
-      await clearSession();
+      await resetInspectionState();
       sessionRef.current = null;
-      reset(createChecklistCampoDefaults());
       void clearCurrentDraft();
+      reset(createChecklistCampoDefaults());
       router.push("/");
     });
   }

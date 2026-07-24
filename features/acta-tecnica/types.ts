@@ -2,7 +2,10 @@ import { z } from "zod";
 import type { BaseInspectionPayload } from "@/lib/types/inspection";
 import { IDENTIFICACION } from "@/lib/identificacion";
 import {
+  celularSchema,
   codigoInspeccionSchema,
+  codigoSicomSchema,
+  digitsOnly,
   emailSchema,
   establecimientoSchema,
   formatCodigoInspeccion,
@@ -16,6 +19,7 @@ import {
   upperTextOptional,
   upperTextRequired,
 } from "@/lib/form-normalization";
+import type { InspectorProfile } from "@/lib/offline/inspector-profile";
 import {
   CONDICIONES_SITIO,
   TIPO_INSPECCION_ACTIVA,
@@ -55,14 +59,14 @@ export const actaTecnicaSchema = z
     codigo: codigoInspeccionSchema(),
     razon_social: upperTextRequired(IDENTIFICACION.razon_social.requiredMessage),
     nit: nitSchema(),
-    codigo_sicom: upperTextRequired(IDENTIFICACION.codigo_sicom.requiredMessage),
+    codigo_sicom: codigoSicomSchema(),
     establecimiento: establecimientoSchema(),
     direccion: upperTextRequired(IDENTIFICACION.direccion.requiredMessage),
     tipo_inspeccion: z.literal(TIPO_INSPECCION_ACTIVA, {
       message: "Seleccione IEDS (las demás opciones estarán disponibles pronto)",
     }),
     inspector_nombre: upperTextRequired("Nombre del inspector requerido"),
-    inspector_celular: z.string().min(1, "Celular requerido"),
+    inspector_celular: celularSchema(),
     inspector_correo: emailSchema(),
     personas: z.array(personaSchema).min(1, "Agregue al menos una persona"),
     condiciones: z.object(condicionesShape),
@@ -104,7 +108,9 @@ export type ActaTecnicaFormValues = z.infer<typeof actaTecnicaSchema>;
 
 export type ActaTecnicaData = ActaTecnicaFormValues;
 
-export function createActaTecnicaDefaults(): ActaTecnicaFormValues {
+export function createActaTecnicaDefaults(
+  inspector?: InspectorProfile | null,
+): ActaTecnicaFormValues {
   const today = new Date().toISOString().slice(0, 10);
 
   const condiciones = Object.fromEntries(
@@ -122,9 +128,9 @@ export function createActaTecnicaDefaults(): ActaTecnicaFormValues {
     establecimiento: "",
     direccion: "",
     tipo_inspeccion: TIPO_INSPECCION_ACTIVA,
-    inspector_nombre: "",
-    inspector_celular: "",
-    inspector_correo: "",
+    inspector_nombre: inspector?.inspector_nombre ?? "",
+    inspector_celular: inspector?.inspector_celular ?? "",
+    inspector_correo: inspector?.inspector_correo ?? "",
     personas: [
       {
         nombre: "",
@@ -175,11 +181,11 @@ export function normalizeActaTecnicaValues(
     codigo: formatCodigoInspeccion(values.codigo),
     razon_social: normalizeUpperText(values.razon_social),
     nit: normalizeNit(values.nit),
-    codigo_sicom: normalizeUpperText(values.codigo_sicom),
+    codigo_sicom: digitsOnly(values.codigo_sicom),
     establecimiento: normalizeEstablecimiento(values.establecimiento),
     direccion: normalizeUpperText(values.direccion),
     inspector_nombre: normalizeUpperText(values.inspector_nombre),
-    inspector_celular: values.inspector_celular.trim(),
+    inspector_celular: digitsOnly(values.inspector_celular),
     inspector_correo: normalizeEmail(values.inspector_correo),
     personas: values.personas.map((persona) => ({
       ...persona,

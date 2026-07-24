@@ -18,6 +18,8 @@ export function useFormDraft<T extends FieldValues>(
   form: UseFormReturn<T>,
   options?: {
     onDraftLoaded?: (values: T) => void;
+    /** Se llama cuando no hay borrador (p. ej. precargar perfil del inspector). */
+    onDraftMissing?: () => void;
     enabled?: boolean;
   },
 ) {
@@ -33,7 +35,9 @@ export function useFormDraft<T extends FieldValues>(
     void (async () => {
       try {
         const draft = await loadDraft<T>(tipo);
-        if (cancelled || !draft) {
+        if (cancelled) return;
+        if (!draft) {
+          options?.onDraftMissing?.();
           loadedRef.current = true;
           return;
         }
