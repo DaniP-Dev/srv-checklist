@@ -44,11 +44,17 @@ export function digitsOnly(value: string): string {
 /** NIT tipable: dígitos y un guion opcional antes del dígito verificador. */
 export function nitInputFilter(value: string): string {
   const cleaned = value.replace(/[^\d-]/g, "");
-  const parts = cleaned.split("-");
-  if (parts.length === 1) return parts[0];
-  const body = parts[0].replace(/\D/g, "");
-  const check = parts.slice(1).join("").replace(/\D/g, "").slice(0, 1);
-  return check ? `${body}-${check}` : body;
+  const dashIndex = cleaned.indexOf("-");
+  if (dashIndex === -1) {
+    return cleaned.replace(/\D/g, "");
+  }
+  const body = cleaned.slice(0, dashIndex).replace(/\D/g, "");
+  const check = cleaned
+    .slice(dashIndex + 1)
+    .replace(/\D/g, "")
+    .slice(0, 1);
+  // Conservar el "-" mientras se escribe el dígito verificador (ej. "900123456-").
+  return `${body}-${check}`;
 }
 
 /** Prefijos a eliminar antes de forzar `EDS [NOMBRE]`. */

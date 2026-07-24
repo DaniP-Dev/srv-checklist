@@ -74,7 +74,7 @@ export const RESULTADO_OPTIONS = [
 ] as const;
 
 export const PQRS_TEXTO =
-  "En caso que el cliente tenga algún PQRS, por favor puede enviarlo al siguiente correo electrónico: servicrep04@gmail.com o por medio del número telefónico 3152077289";
+  "En caso que el cliente tenga algún PQRS, por favor puede enviarlo al siguiente correo electrónico: servicrep04@gmail.com o por medio del número telefónico 3107203270";
 
 export const ENCUESTA_CALIFICACION_OPTIONS = [
   { value: "excelente", label: "Excelente" },

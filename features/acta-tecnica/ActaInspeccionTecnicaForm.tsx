@@ -283,7 +283,8 @@ export function ActaInspeccionTecnicaForm() {
             </Label>
             <Input
               id={IDENTIFICACION.nit.key}
-              inputMode="numeric"
+              inputMode="text"
+              autoComplete="off"
               placeholder="Ej. 900123456-1"
               error={errors.nit?.message}
               {...register("nit", {
